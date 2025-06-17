@@ -18,14 +18,29 @@ export default function QuizStartPage() {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
   const { toast } = useToast();
-  const [isPreparingQuiz, setIsPreparingQuiz] = useState(false);
-  const [activeQuizExistsOnLoad, setActiveQuizExistsOnLoad] = useState(false);
+  const [isPreparingQuiz, setIsPreparingQuiz] = useState(false); // This state might be less relevant if quiz is always pre-loaded
+  const [activeQuizDetails, setActiveQuizDetails] = useState<{numQuestions: number, hasQuiz: boolean} | null>(null);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
-      setActiveQuizExistsOnLoad(!!localStorage.getItem(ACTIVE_QUIZ_DATA_KEY));
+      const activeQuizJson = localStorage.getItem(ACTIVE_QUIZ_DATA_KEY);
+      if (activeQuizJson) {
+        try {
+          const quizData = JSON.parse(activeQuizJson) as GeneratedQuiz;
+          if (quizData && quizData.quiz && quizData.quiz.length > 0) {
+            setActiveQuizDetails({ numQuestions: quizData.quiz.length, hasQuiz: true });
+          } else {
+            setActiveQuizDetails({ numQuestions: 0, hasQuiz: false });
+          }
+        } catch (e) {
+          console.error("Erreur de chargement des données du quiz", e);
+          setActiveQuizDetails({ numQuestions: 0, hasQuiz: false });
+        }
+      } else {
+        setActiveQuizDetails({ numQuestions: 0, hasQuiz: false });
+      }
     }
   }, []);
 
@@ -38,35 +53,37 @@ export default function QuizStartPage() {
 
     const activeQuizJson = localStorage.getItem(ACTIVE_QUIZ_DATA_KEY);
     if (!activeQuizJson) {
-      toast({ title: 'Aucun Quiz Disponible', description: 'Un administrateur doit d\'abord télécharger un document et générer un quiz.', variant: 'destructive' });
-      setActiveQuizExistsOnLoad(false); 
-      router.push('/admin/upload'); 
+      toast({ title: 'Aucun Quiz Disponible', description: 'Aucun quiz actif trouvé. Veuillez en générer un ou demander à un administrateur.', variant: 'destructive' });
+      setActiveQuizDetails({ numQuestions: 0, hasQuiz: false }); 
+      router.push('/'); 
       return;
     }
 
-    setIsPreparingQuiz(true);
+    setIsPreparingQuiz(true); // Keep for visual feedback even if brief
     try {
       const quizDataFromStorage = JSON.parse(activeQuizJson) as GeneratedQuiz; 
       
       if (quizDataFromStorage && quizDataFromStorage.quiz && quizDataFromStorage.quiz.length > 0) {
-        localStorage.setItem(QUIZ_SESSION_KEY, JSON.stringify(quizDataFromStorage));
+        localStorage.setItem(QUIZ_SESSION_KEY, JSON.stringify(quizDataFromStorage)); // Store the full quiz data for the session
         toast({ title: 'Quiz Prêt !', description: `Votre quiz de ${quizDataFromStorage.quiz.length} questions est prêt.` });
         router.push('/quiz/play');
       } else {
-        throw new Error('Les données du quiz stockées sont invalides ou vides.');
+        toast({ title: 'Quiz Invalide ou Vide', description: 'Les données du quiz actif sont invalides ou ne contiennent pas de questions.', variant: 'destructive' });
+        setIsPreparingQuiz(false);
+        setActiveQuizDetails({ numQuestions: 0, hasQuiz: false }); 
       }
     } catch (error) {
-      console.error('Erreur lors du chargement du quiz pré-généré:', error);
+      console.error('Erreur lors du chargement du quiz :', error);
       toast({
         title: 'Échec du Démarrage du Quiz',
-        description: (error instanceof Error ? error.message : String(error)) || 'Impossible de charger le quiz pré-généré. Il pourrait être corrompu ou manquant.',
+        description: (error instanceof Error ? error.message : String(error)) || 'Impossible de charger le quiz.',
         variant: 'destructive',
       });
       setIsPreparingQuiz(false);
     }
   };
   
-  if (!isClient || userLoading) {
+  if (!isClient || userLoading || activeQuizDetails === null) { // Wait for activeQuizDetails to be determined
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -90,17 +107,19 @@ export default function QuizStartPage() {
     );
   }
 
-  if (!activeQuizExistsOnLoad) { 
+  if (!activeQuizDetails.hasQuiz) { 
      return (
       <Card className="w-full max-w-md mx-auto mt-10 text-center shadow-lg">
         <CardHeader>
-          <CardTitle>Aucun Quiz Disponible</CardTitle>
-          <CardDescription>Aucun quiz n'a encore été généré par un administrateur.</CardDescription>
+          <CardTitle>Aucun Quiz Prêt à Démarrer</CardTitle>
+          <CardDescription>Aucun quiz avec des questions n'a été trouvé dans les données actives.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">Veuillez demander à un administrateur de télécharger un document et de générer un quiz.</p>
-          <Button asChild variant="secondary">
-            <Link href="/admin/upload">Page de Téléchargement Admin</Link>
+          <p className="text-sm text-muted-foreground mb-4">
+            Veuillez générer un quiz depuis la page d'accueil (culture générale ou PDF via admin) ou demander à un administrateur de télécharger un document.
+          </p>
+          <Button asChild variant="outline">
+            <Link href="/">Retour à l'Accueil</Link>
           </Button>
         </CardContent>
       </Card>
@@ -113,7 +132,7 @@ export default function QuizStartPage() {
          <PlayCircle className="h-20 w-20 text-primary mx-auto mb-6" />
         <h1 className="text-4xl font-headline font-bold text-primary mb-4">Prêt à Commencer ?</h1>
         <p className="text-lg text-muted-foreground mb-8">
-          Le quiz est prêt et basé sur le dernier document téléchargé par un administrateur.
+          Un quiz de {activeQuizDetails.numQuestions} questions est prêt à être lancé.
         </p>
         <Button onClick={handleStartQuiz} disabled={isPreparingQuiz} size="lg" className="w-full max-w-xs mx-auto">
           {isPreparingQuiz ? (
@@ -135,8 +154,7 @@ export default function QuizStartPage() {
             <div>
               <p className="text-sm font-semibold">Note :</p>
               <p className="text-xs">
-                Ce quiz est basé sur le(s) dernier(s) document(s) téléchargé(s) et traité(s) par un administrateur.
-                Les questions sont sélectionnées lors de cette étape de traitement.
+                Ce quiz est basé sur les dernières données actives (générées à partir d'un PDF ou de la culture générale).
               </p>
             </div>
           </CardContent>

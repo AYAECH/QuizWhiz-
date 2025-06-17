@@ -41,16 +41,16 @@ export default function FlashInfoPage() {
         if (quizData && Array.isArray(quizData.flashFacts) && quizData.flashFacts.length > 0 && quizData.flashFacts.some(fact => fact.trim() !== "")) {
           setFlashFacts(quizData.flashFacts.filter(fact => fact.trim() !== ""));
         } else {
-          setFlashFacts(null); 
+          setFlashFacts(null); // Explicitly set to null if no meaningful flash facts
         }
       } catch (error) {
-        console.error('Erreur d\'analyse des données du quiz pour les infos flash:', error);
+        console.error('Erreur d\'analyse des données pour les infos flash:', error);
         toast({ title: 'Erreur de Chargement des Données', description: 'Impossible d\'analyser le contenu stocké.', variant: 'destructive' });
         setFlashFacts(null);
       }
     } else {
-      setFlashFacts(null); 
-      toast({ title: 'Aucun Contenu Disponible', description: 'Aucun quiz ou information flash n\'a encore été généré par un administrateur.', variant: 'destructive' });
+      setFlashFacts(null); // No active data found
+      // Avoid toast here as user might have landed directly without content generated yet
     }
     setIsLoading(false);
   }, [isClient, user, userLoading, router, toast]);
@@ -72,23 +72,23 @@ export default function FlashInfoPage() {
             <Lightbulb className="h-10 w-10" />
           </div>
           <CardTitle className="text-3xl">Informations Flash</CardTitle>
-          <CardDescription>Aperçus rapides et faits clés des documents sources (en français).</CardDescription>
+          <CardDescription>Aperçus rapides et faits clés (en français).</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {flashFacts === undefined && ( 
+        <CardContent className="space-y-4 min-h-[150px]">
+          {flashFacts === undefined && ( // Still loading from localStorage effect
             <div className="flex justify-center items-center min-h-[100px]">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           )}
-          {flashFacts === null && ( 
+          {flashFacts === null && ( // No flash facts available
             <Card className="bg-yellow-50 border-yellow-400 text-yellow-700">
               <CardContent className="p-4 flex items-start space-x-3">
                 <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold">Aucune Information Flash Disponible</p>
                   <p className="text-xs">
-                    Les informations flash n'ont peut-être pas été générées pour les documents actuels, ou aucun document n'a encore été traité.
-                    Veuillez demander à un administrateur de <Link href="/admin/upload" className="underline hover:text-yellow-800">télécharger des documents et générer du contenu</Link>.
+                    Les informations flash n'ont peut-être pas été générées pour le sujet actuel ou aucun contenu n'a encore été traité.
+                    Essayez de <Link href="/" className="underline hover:text-yellow-800">générer des informations flash</Link> depuis la page d'accueil.
                   </p>
                 </div>
               </CardContent>
