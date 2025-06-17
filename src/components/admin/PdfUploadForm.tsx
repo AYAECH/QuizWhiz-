@@ -57,10 +57,10 @@ export function PdfUploadForm() {
     }
 
     const parsedNumQuestions = parseInt(numQuestions, 10);
-    if (isNaN(parsedNumQuestions) || parsedNumQuestions < 5 || parsedNumQuestions > 50) {
+    if (isNaN(parsedNumQuestions) || parsedNumQuestions < 5 || parsedNumQuestions > 1000) {
       toast({
         title: 'Invalid Number of Questions',
-        description: 'Please enter a number between 5 and 50.',
+        description: 'Please enter a number between 5 and 1000.',
         variant: 'destructive',
       });
       return;
@@ -145,14 +145,14 @@ export function PdfUploadForm() {
           value={numQuestions}
           onChange={handleNumQuestionsChange}
           min="5"
-          max="50"
+          max="1000"
           step="1"
           className="w-full"
           aria-describedby="num-questions-help"
           disabled={isLoading}
         />
         <p id="num-questions-help" className="text-sm text-muted-foreground">
-          Enter the desired number of questions (5-50).
+          Enter the desired number of questions (5-1000).
         </p>
       </div>
 
@@ -191,7 +191,7 @@ export function PdfUploadForm() {
           <div>
             <p className="text-sm font-semibold">Important Note:</p>
             <p className="text-xs">
-              Quiz generation may take a few moments. Ensure PDF content is clear for best results.
+              Quiz generation may take a few moments, especially for a large number of questions. Ensure PDF content is clear for best results.
             </p>
           </div>
         </CardContent>
@@ -199,4 +199,3 @@ export function PdfUploadForm() {
     </form>
   );
 }
-

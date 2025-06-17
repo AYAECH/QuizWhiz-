@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Generates a multiple-choice quiz from one or more PDF documents.
@@ -16,7 +17,7 @@ const GenerateQuizFromPdfInputSchema = z.object({
     .describe(
       "A PDF document, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     )).describe('An array of PDF documents as data URIs.'),
-  numQuestions: z.number().int().min(5).max(50).describe("The desired number of questions to generate, between 5 and 50."),
+  numQuestions: z.number().int().min(5).max(1000).describe("The desired number of questions to generate, between 5 and 1000."),
 });
 export type GenerateQuizFromPdfInput = z.infer<typeof GenerateQuizFromPdfInputSchema>;
 
@@ -35,8 +36,8 @@ export async function generateQuizFromPdf(input: GenerateQuizFromPdfInput): Prom
   if (!input.pdfDataUris || input.pdfDataUris.length === 0) {
     throw new Error('No PDF documents provided.');
   }
-  if (input.numQuestions < 5 || input.numQuestions > 50) {
-    throw new Error('Number of questions must be between 5 and 50.');
+  if (input.numQuestions < 5 || input.numQuestions > 1000) {
+    throw new Error('Number of questions must be between 5 and 1000.');
   }
   return generateQuizFromPdfFlow(input);
 }
