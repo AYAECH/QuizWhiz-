@@ -125,7 +125,7 @@ export function QuizClientPage() {
       userAnswers: finalAnswers,
       score,
       totalQuestions: quizData.quiz.length,
-      pdfUriUsed: localStorage.getItem('quizwhiz_active_pdf_uri') || undefined
+      // pdfUriUsed: localStorage.getItem('quizwhiz_active_pdf_uri') || undefined // Removed
     };
 
     localStorage.setItem(QUIZ_ATTEMPT_RESULTS_KEY, JSON.stringify(attemptData));

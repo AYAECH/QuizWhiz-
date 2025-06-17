@@ -18,7 +18,7 @@ export interface QuizAttempt {
   userAnswers: Record<number, string>; // questionIndex: selectedOptionString
   score: number;
   totalQuestions: number;
-  pdfUriUsed?: string; // Optional: URI of the PDF used for this quiz
+  // pdfUriUsed?: string; // Removed to avoid issues with large PDF URIs in localStorage
 }
 
 export interface FeedbackItem {

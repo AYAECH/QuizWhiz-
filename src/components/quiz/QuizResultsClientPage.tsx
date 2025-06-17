@@ -66,11 +66,12 @@ export function QuizResultsClientPage() {
           const questionIndex = attemptData.quizDefinition.quiz.findIndex(q => q.question === incorrectQ.question);
           const userAnswer = attemptData.userAnswers[questionIndex];
           try {
+            // Context no longer uses pdfUriUsed as it's removed from QuizAttempt
             const feedbackOutput = await provideEducationalFeedback({
               question: incorrectQ.question,
               userAnswer: userAnswer,
               correctAnswer: incorrectQ.answer,
-              context: `Original question: "${incorrectQ.question}". User selected "${userAnswer}" while correct was "${incorrectQ.answer}". From document: ${attemptData.pdfUriUsed ? "related to the uploaded PDF." : "general knowledge."}`, 
+              context: `Original question: "${incorrectQ.question}". User selected "${userAnswer}" while correct was "${incorrectQ.answer}". This question was derived from an uploaded document.`, 
             });
             newFeedbackItems.push({
               question: incorrectQ.question,

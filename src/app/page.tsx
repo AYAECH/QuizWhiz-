@@ -7,20 +7,22 @@ import { ArrowRight, BookOpenCheck, UploadCloud, Bell } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
 import { useEffect, useState } from 'react';
 
+const ACTIVE_QUIZ_DATA_KEY = 'quizwhiz_active_quiz_data';
+
 export default function HomePage() {
   const { user } = useUser();
   const [isClient, setIsClient] = useState(false);
-  const [pdfAvailable, setPdfAvailable] = useState(false);
+  const [quizAvailable, setQuizAvailable] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
     if (typeof window !== 'undefined') {
-      const activePdfUri = localStorage.getItem('quizwhiz_active_pdf_uri');
-      setPdfAvailable(!!activePdfUri);
+      const activeQuizData = localStorage.getItem(ACTIVE_QUIZ_DATA_KEY);
+      setQuizAvailable(!!activeQuizData);
     }
   }, []);
 
-  const canStartQuiz = user && pdfAvailable;
+  const canStartQuiz = user && quizAvailable;
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8">
@@ -43,10 +45,10 @@ export default function HomePage() {
                <p className="text-sm text-muted-foreground">Loading...</p>
             ) : !user ? (
               <p className="text-sm text-destructive">Please <Link href="/register" className="underline hover:text-destructive/80">register or log in</Link> to start a quiz.</p>
-            ) : !pdfAvailable ? (
-              <p className="text-sm text-destructive">An admin needs to <Link href="/admin/upload" className="underline hover:text-destructive/80">upload a document</Link> first.</p>
+            ) : !quizAvailable ? (
+              <p className="text-sm text-destructive">An admin needs to <Link href="/admin/upload" className="underline hover:text-destructive/80">upload a document and generate a quiz</Link> first.</p>
             ) : (
-              <p className="text-sm text-muted-foreground">A quiz document is available. Good luck!</p>
+              <p className="text-sm text-muted-foreground">A quiz is available. Good luck!</p>
             )}
           </CardContent>
           <CardFooter>

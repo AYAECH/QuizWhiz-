@@ -5,27 +5,28 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/context/UserContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { generateQuizFromPdf, type GenerateQuizFromPdfOutput } from '@/ai/flows/generate-quiz-from-pdf';
+// import { generateQuizFromPdf, type GenerateQuizFromPdfOutput } from '@/ai/flows/generate-quiz-from-pdf'; // No longer generating here
 import { Loader2, PlayCircle, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
-import type { GeneratedQuiz } from '@/types';
+import type { GeneratedQuiz } from '@/types'; // This is { quiz: QuizQuestion[] }
 
-const PDF_STORAGE_KEY = 'quizwhiz_active_pdf_uri';
-const QUIZ_SESSION_KEY = 'quizwhiz_current_quiz_session_data'; // For passing generated quiz to play page
+const ACTIVE_QUIZ_DATA_KEY = 'quizwhiz_active_quiz_data'; // Key for the pre-generated quiz by admin
+const QUIZ_SESSION_KEY = 'quizwhiz_current_quiz_session_data'; // For passing selected quiz to play page
 
 export default function QuizStartPage() {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
   const { toast } = useToast();
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [pdfUri, setPdfUri] = useState<string | null>(null);
+  const [isPreparingQuiz, setIsPreparingQuiz] = useState(false);
+  const [activeQuizExistsOnLoad, setActiveQuizExistsOnLoad] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    const activePdfUri = localStorage.getItem(PDF_STORAGE_KEY);
-    setPdfUri(activePdfUri);
+    if (typeof window !== 'undefined') {
+      setActiveQuizExistsOnLoad(!!localStorage.getItem(ACTIVE_QUIZ_DATA_KEY));
+    }
   }, []);
 
   const handleStartQuiz = async () => {
@@ -34,34 +35,36 @@ export default function QuizStartPage() {
       router.push('/register');
       return;
     }
-    if (!pdfUri) {
-      toast({ title: 'No Document Found', description: 'An admin needs to upload a PDF document first.', variant: 'destructive' });
-      router.push('/admin/upload');
+
+    const activeQuizJson = localStorage.getItem(ACTIVE_QUIZ_DATA_KEY);
+    if (!activeQuizJson) {
+      toast({ title: 'No Quiz Available', description: 'An admin needs to upload a document and generate a quiz first.', variant: 'destructive' });
+      setActiveQuizExistsOnLoad(false); // Update UI state if button was somehow enabled
+      router.push('/admin/upload'); // Or stay and show message, current logic re-renders to "No Quiz" card
       return;
     }
 
-    setIsGenerating(true);
+    setIsPreparingQuiz(true);
     try {
-      const quizOutput: GenerateQuizFromPdfOutput = await generateQuizFromPdf({ pdfDataUri: pdfUri });
+      // Data from ACTIVE_QUIZ_DATA_KEY is GenerateQuizFromPdfOutput which is compatible with GeneratedQuiz
+      const quizDataFromStorage = JSON.parse(activeQuizJson) as GeneratedQuiz; 
       
-      if (quizOutput && quizOutput.quiz && quizOutput.quiz.length > 0) {
-        const quizData: GeneratedQuiz = { quiz: quizOutput.quiz };
-        localStorage.setItem(QUIZ_SESSION_KEY, JSON.stringify(quizData));
-        toast({ title: 'Quiz Ready!', description: `Your quiz with ${quizOutput.quiz.length} questions is ready.` });
+      if (quizDataFromStorage && quizDataFromStorage.quiz && quizDataFromStorage.quiz.length > 0) {
+        localStorage.setItem(QUIZ_SESSION_KEY, JSON.stringify(quizDataFromStorage));
+        toast({ title: 'Quiz Ready!', description: `Your quiz with ${quizDataFromStorage.quiz.length} questions is ready.` });
         router.push('/quiz/play');
       } else {
-        throw new Error('AI failed to generate quiz questions or returned an empty quiz.');
+        throw new Error('Stored quiz data is invalid or empty.');
       }
     } catch (error) {
-      console.error('Error generating quiz:', error);
+      console.error('Error loading pre-generated quiz:', error);
       toast({
         title: 'Failed to Start Quiz',
-        description: (error instanceof Error ? error.message : String(error)) || 'Could not generate the quiz. The PDF might be invalid or the AI service is unavailable.',
+        description: (error instanceof Error ? error.message : String(error)) || 'Could not load the pre-generated quiz. It might be corrupted or missing.',
         variant: 'destructive',
       });
-      setIsGenerating(false);
+      setIsPreparingQuiz(false);
     }
-    // Do not set isGenerating to false here if navigation is successful, to avoid button re-enable flicker
   };
   
   if (!isClient || userLoading) {
@@ -88,15 +91,15 @@ export default function QuizStartPage() {
     );
   }
 
-  if (!pdfUri) {
+  if (!activeQuizExistsOnLoad) { // Check based on initial load state
      return (
       <Card className="w-full max-w-md mx-auto mt-10 text-center shadow-lg">
         <CardHeader>
-          <CardTitle className="font-headline">No Quiz Document</CardTitle>
-          <CardDescription>No PDF document has been uploaded by an admin yet.</CardDescription>
+          <CardTitle className="font-headline">No Quiz Available</CardTitle>
+          <CardDescription>No quiz has been generated by an admin yet.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">Please ask an administrator to upload a document.</p>
+          <p className="text-sm text-muted-foreground mb-4">Please ask an administrator to upload a document and generate a quiz.</p>
           <Button asChild variant="secondary">
             <Link href="/admin/upload">Admin Upload Page</Link>
           </Button>
@@ -111,30 +114,30 @@ export default function QuizStartPage() {
          <PlayCircle className="h-20 w-20 text-primary mx-auto mb-6" />
         <h1 className="text-4xl font-headline font-bold text-primary mb-4">Ready to Start?</h1>
         <p className="text-lg text-muted-foreground mb-8">
-          A new quiz will be generated from the active document. This may take a few moments.
+          The quiz is ready and based on the latest document uploaded by an administrator.
         </p>
-        <Button onClick={handleStartQuiz} disabled={isGenerating || !pdfUri} size="lg" className="w-full max-w-xs mx-auto">
-          {isGenerating ? (
+        <Button onClick={handleStartQuiz} disabled={isPreparingQuiz} size="lg" className="w-full max-w-xs mx-auto">
+          {isPreparingQuiz ? (
             <>
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Generating Quiz...
+              Preparing Quiz...
             </>
           ) : (
             'Start Quiz Now'
           )}
         </Button>
-        {isGenerating && (
-          <p className="text-sm text-muted-foreground mt-4">Please wait, we're preparing your questions...</p>
+        {isPreparingQuiz && (
+          <p className="text-sm text-muted-foreground mt-4">Please wait, we're loading your questions...</p>
         )}
 
         <Card className="mt-8 bg-blue-50 border-blue-400 text-blue-700">
           <CardContent className="p-4 flex items-start space-x-3">
             <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0 text-blue-500" />
             <div>
-              <p className="text-sm font-semibold">Note on "Dynamic Renewal":</p>
+              <p className="text-sm font-semibold">Note:</p>
               <p className="text-xs">
-                Each time you click "Start Quiz Now", a quiz is freshly generated from the currently active PDF document.
-                This ensures questions can vary if the AI model introduces variability or if the source document is updated by an admin.
+                This quiz is based on the latest document uploaded and processed by an administrator.
+                Questions are selected during that processing step.
               </p>
             </div>
           </CardContent>

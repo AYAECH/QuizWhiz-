@@ -9,7 +9,7 @@ import { generateQuizFromPdf, type GenerateQuizFromPdfOutput } from '@/ai/flows/
 import { Loader2, UploadCloud, FileText, AlertTriangle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
-const PDF_STORAGE_KEY = 'quizwhiz_active_pdf_uri';
+// const PDF_STORAGE_KEY = 'quizwhiz_active_pdf_uri'; // No longer storing full PDF URI
 const QUIZ_DATA_STORAGE_KEY = 'quizwhiz_active_quiz_data'; // To store the generated quiz from this PDF
 
 export function PdfUploadForm() {
@@ -57,7 +57,7 @@ export function PdfUploadForm() {
         const pdfDataUri = reader.result as string;
         
         try {
-          localStorage.setItem(PDF_STORAGE_KEY, pdfDataUri); // Store PDF URI
+          // localStorage.setItem(PDF_STORAGE_KEY, pdfDataUri); // Store PDF URI - REMOVED due to quota limits
           
           const quizOutput: GenerateQuizFromPdfOutput = await generateQuizFromPdf({ pdfDataUri });
 
@@ -79,8 +79,8 @@ export function PdfUploadForm() {
             description: (aiError instanceof Error ? aiError.message : String(aiError)) || 'The AI failed to process the PDF. Please try another document or check the console.',
             variant: 'destructive',
           });
-          // Clear stored PDF URI if AI fails, so users don't try to start a quiz with a problematic PDF
-          localStorage.removeItem(PDF_STORAGE_KEY);
+          // Clear stored quiz data if AI fails
+          // localStorage.removeItem(PDF_STORAGE_KEY); // REMOVED
           localStorage.removeItem(QUIZ_DATA_STORAGE_KEY);
         } finally {
           setIsLoading(false);
