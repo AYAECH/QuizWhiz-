@@ -2,7 +2,7 @@
 'use server';
 
 /**
- * @fileOverview Génère un feedback éducatif en français pour les réponses incorrectes aux quiz.
+ * @fileOverview Génère un feedback éducatif et une suggestion d'étude en français pour les réponses incorrectes aux quiz.
  *
  * - provideEducationalFeedback - Une fonction qui fournit un feedback pour les réponses incorrectes aux quiz.
  * - ProvideEducationalFeedbackInput - Le type d'entrée pour la fonction provideEducationalFeedback.
@@ -16,13 +16,14 @@ const ProvideEducationalFeedbackInputSchema = z.object({
   question: z.string().describe('La question du quiz (en français).'),
   userAnswer: z.string().describe('La réponse de l\'utilisateur à la question (en français).'),
   correctAnswer: z.string().describe('La réponse correcte à la question (en français).'),
-  context: z.string().describe('Contexte pertinent du document source pour aider à expliquer la réponse. Peut être en anglais ou en français.'),
+  context: z.string().describe('Contexte pertinent pour aider à expliquer la réponse et suggérer une étude. Peut être en anglais ou en français.'),
 });
 
 export type ProvideEducationalFeedbackInput = z.infer<typeof ProvideEducationalFeedbackInputSchema>;
 
 const ProvideEducationalFeedbackOutputSchema = z.object({
   explanation: z.string().describe('Une explication claire et éducative, EN FRANÇAIS, indiquant pourquoi la réponse de l\'utilisateur était incorrecte et pourquoi la bonne réponse est correcte.'),
+  studySuggestion: z.string().describe('Une suggestion concise EN FRANÇAIS sur le concept clé ou la section thématique que l\'utilisateur devrait réviser pour mieux comprendre cette question. Cette suggestion doit aider l\'utilisateur à identifier "la partie à étudier".'),
 });
 
 export type ProvideEducationalFeedbackOutput = z.infer<typeof ProvideEducationalFeedbackOutputSchema>;
@@ -36,9 +37,13 @@ const prompt = ai.definePrompt({
   input: {schema: ProvideEducationalFeedbackInputSchema},
   output: {schema: ProvideEducationalFeedbackOutputSchema},
   prompt: `Vous êtes un expert pédagogue fournissant des retours sur les questions d'un quiz.
-La langue de l'interaction (question, réponses) est le FRANÇAIS. Votre explication doit impérativement être EN FRANÇAIS.
+La langue de l'interaction (question, réponses) est le FRANÇAIS. Votre explication et suggestion d'étude doivent impérativement être EN FRANÇAIS.
 
-Un utilisateur a répondu incorrectement à la question suivante. Fournissez une explication claire et pédagogique EN FRANÇAIS expliquant pourquoi la réponse de l'utilisateur était incorrecte et pourquoi la bonne réponse est correcte. Utilisez le contexte fourni pour donner une réponse complète. Assurez-vous que votre explication soit entièrement EN FRANÇAIS.
+Un utilisateur a répondu incorrectement à la question suivante.
+1. Fournissez une explication claire et pédagogique EN FRANÇAIS expliquant pourquoi la réponse de l'utilisateur était incorrecte et pourquoi la bonne réponse est correcte.
+2. Fournissez une suggestion concise EN FRANÇAIS sur le concept clé ou la section thématique que l'utilisateur devrait réviser pour mieux comprendre cette question. Cette suggestion doit aider l'utilisateur à identifier "la partie à étudier".
+
+Utilisez le contexte fourni pour informer votre réponse.
 
 Question (en français) : {{{question}}}
 Réponse de l'utilisateur (en français) : {{{userAnswer}}}
@@ -54,6 +59,14 @@ const provideEducationalFeedbackFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+      throw new Error("L'IA n'a pas pu générer de feedback.");
+    }
+    // S'assurer que les deux champs sont présents, même s'ils sont vides, pour respecter le schéma.
+    return {
+        explanation: output.explanation || "Explication non disponible.",
+        studySuggestion: output.studySuggestion || "Suggestion d'étude non disponible."
+    };
   }
 );
+

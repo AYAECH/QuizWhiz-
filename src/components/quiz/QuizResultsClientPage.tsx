@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { provideEducationalFeedback } from '@/ai/flows/provide-educational-feedback';
-import { CheckCircle, XCircle, MessageSquare, Loader2, Home, RotateCcw, HelpCircle, Save } from 'lucide-react';
+import { CheckCircle, XCircle, MessageSquare, Loader2, Home, RotateCcw, HelpCircle, Save, GraduationCap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/lib/supabaseClient'; // Import Supabase client
 
@@ -125,13 +125,14 @@ export function QuizResultsClientPage() {
               question: questionObj.question,
               userAnswer: userAnswer,
               correctAnswer: questionObj.answer,
-              context: `L'utilisateur a répondu à la question : "${questionObj.question}". Sa réponse était "${userAnswer}", mais la bonne réponse était "${questionObj.answer}". Cette question a été générée en français. Veuillez fournir une explication EN FRANÇAIS.`, 
+              context: `L'utilisateur a répondu à la question : "${questionObj.question}". Sa réponse était "${userAnswer}", mais la bonne réponse était "${questionObj.answer}". Cette question a été générée en français. Veuillez fournir une explication ET une suggestion d'étude EN FRANÇAIS.`, 
             });
             newFeedbackItems.push({
               question: questionObj.question,
               userAnswer,
               correctAnswer: questionObj.answer,
               explanation: feedbackOutput.explanation,
+              studySuggestion: feedbackOutput.studySuggestion,
             });
           } catch (error) {
             console.error(`Échec de l'obtention du feedback pour la question : ${questionObj.question}`, error);
@@ -140,6 +141,7 @@ export function QuizResultsClientPage() {
               userAnswer,
               correctAnswer: questionObj.answer,
               explanation: 'Impossible de récupérer l\'explication pour le moment.',
+              studySuggestion: 'Suggestion d\'étude non disponible.',
             });
             toast({ title: 'Erreur de Feedback', description: `Impossible d'obtenir l'explication pour : "${questionObj.question.substring(0,30)}..."`, variant: 'destructive' });
           }
@@ -216,7 +218,7 @@ export function QuizResultsClientPage() {
               {isFetchingFeedback && (
                 <div className="flex items-center justify-center text-muted-foreground p-4">
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Chargement des explications...
+                  Chargement des explications et suggestions...
                 </div>
               )}
               <Accordion type="single" collapsible className="w-full">
@@ -231,6 +233,7 @@ export function QuizResultsClientPage() {
                     <AccordionContent className="px-4 pt-2 pb-4 space-y-3 bg-card border-t">
                       <p><strong>Votre Réponse :</strong> <span className="text-red-600 font-semibold">{item.userAnswer}</span></p>
                       <p><strong>Réponse Correcte :</strong> <span className="text-green-600 font-semibold">{item.correctAnswer}</span></p>
+                      
                       <div className="p-3 bg-primary/5 border-l-4 border-primary rounded-md">
                         <div className="flex items-start space-x-2">
                           <MessageSquare className="h-5 w-5 text-primary shrink-0 mt-0.5" />
@@ -240,6 +243,18 @@ export function QuizResultsClientPage() {
                           </div>
                         </div>
                       </div>
+
+                      {item.studySuggestion && (
+                        <div className="p-3 bg-accent/10 border-l-4 border-accent rounded-md">
+                          <div className="flex items-start space-x-2">
+                            <GraduationCap className="h-5 w-5 text-accent-foreground shrink-0 mt-0.5" />
+                            <div>
+                              <p className="font-semibold text-accent-foreground">Partie à Étudier (Suggestion IA) :</p>
+                              <p className="text-sm text-accent-foreground/90">{item.studySuggestion}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </AccordionContent>
                   </AccordionItem>
                 ))}
@@ -247,7 +262,7 @@ export function QuizResultsClientPage() {
             </div>
           )}
            {!isFetchingFeedback && feedbackItems.length === 0 && score < totalQuestions && (
-              <p className="text-center text-muted-foreground p-4">Aucune réponse incorrecte à examiner ou les explications sont en cours de chargement.</p>
+              <p className="text-center text-muted-foreground p-4">Aucune réponse incorrecte à examiner ou les explications/suggestions sont en cours de chargement.</p>
             )}
           {score === totalQuestions && !isFetchingFeedback && (
             <div className="text-center p-6 rounded-lg bg-green-50 border border-green-300">
@@ -269,3 +284,4 @@ export function QuizResultsClientPage() {
     </div>
   );
 }
+

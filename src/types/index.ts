@@ -28,4 +28,6 @@ export interface FeedbackItem {
   userAnswer: string;
   correctAnswer: string;
   explanation: string;
+  studySuggestion?: string;
 }
+
