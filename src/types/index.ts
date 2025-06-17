@@ -11,10 +11,11 @@ export interface QuizQuestion {
   answer: string; 
 }
 
-export interface GeneratedQuiz { // Ce qui est stocké dans localStorage (ACTIVE_QUIZ_DATA_KEY)
+export interface GeneratedQuiz { // Ce qui est stocké dans localStorage (ACTIVE_QUIZ_DATA_KEY ou QUIZ_SESSION_KEY)
   quiz: QuizQuestion[];
   flashFacts?: string[]; 
   sourceTitle?: string; // Pour afficher sur les pages de quiz/flash si besoin
+  pdfDocId?: string; // Optionnel: ID du document PDF si le quiz en provient
 }
 
 export interface QuizAttempt {
@@ -32,12 +33,11 @@ export interface FeedbackItem {
   studySuggestion?: string;
 }
 
-// Nouveau type pour les entrées de la bibliothèque PDF
+// Modifié: PdfContentEntry stocke les métadonnées du PDF et ses data URIs
 export interface PdfContentEntry {
   id: string;
   title: string;
-  file_sources: string[];
-  quiz_data: QuizQuestion[] | null;
-  flash_facts_data: string[] | null;
+  file_sources: string[]; // Noms des fichiers originaux
+  pdf_data_uris: string[];  // Contenu des PDF en data URI
   created_at: string;
 }

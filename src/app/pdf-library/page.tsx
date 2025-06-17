@@ -8,11 +8,11 @@ import { useUser } from '@/context/UserContext';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Loader2, AlertTriangle, Home, Library, BookOpenCheck, Lightbulb, FileText, PlayCircle, Trash2 } from 'lucide-react';
+import { Loader2, AlertTriangle, Home, Library, FileText, PlayCircle, Trash2, Settings2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import type { PdfContentEntry, GeneratedQuiz } from '@/types';
+import type { PdfContentEntry } from '@/types'; // PdfContentEntry type might need update
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,26 +24,22 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-
-const QUIZ_SESSION_KEY = 'quizwhiz_current_quiz_session_data';
-const ACTIVE_QUIZ_DATA_KEY = 'quizwhiz_active_quiz_data';
-
 export default function PdfLibraryPage() {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
   const { toast } = useToast();
-  const [pdfContents, setPdfContents] = useState<PdfContentEntry[]>([]);
+  const [pdfEntries, setPdfEntries] = useState<PdfContentEntry[]>([]); // Changed from pdfContents
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isClient, setIsClient] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [contentToDelete, setContentToDelete] = useState<PdfContentEntry | null>(null);
+  const [entryToDelete, setEntryToDelete] = useState<PdfContentEntry | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  const fetchPdfContents = async () => {
+  const fetchPdfEntries = async () => {
     setIsLoadingData(true);
     if (!supabase) {
       toast({ title: 'Erreur Supabase', description: 'Client Supabase non initialisé.', variant: 'destructive' });
@@ -51,17 +47,18 @@ export default function PdfLibraryPage() {
       return;
     }
     try {
+      // Select only necessary fields, pdf_data_uris is not needed for listing
       const { data, error } = await supabase
         .from('pdf_generated_content')
-        .select('id, title, file_sources, quiz_data, flash_facts_data, created_at')
+        .select('id, title, file_sources, created_at') 
         .order('created_at', { ascending: false });
 
       if (error) {
         throw error;
       }
-      setPdfContents(data as PdfContentEntry[] || []);
+      setPdfEntries(data as Omit<PdfContentEntry, 'pdf_data_uris'>[] || []);
     } catch (error: any) {
-      console.error('Erreur lors de la récupération des contenus PDF:', error);
+      console.error('Erreur lors de la récupération des entrées PDF:', error);
       toast({
         title: 'Erreur de Chargement',
         description: error.message || 'Impossible de charger la bibliothèque PDF.',
@@ -82,73 +79,47 @@ export default function PdfLibraryPage() {
       }
       return;
     }
-    fetchPdfContents();
+    fetchPdfEntries();
   }, [isClient, user, userLoading, router, toast]);
 
-  const handleStartPdfQuiz = (content: PdfContentEntry) => {
-    if (!content.quiz_data || content.quiz_data.length === 0) {
-      toast({ title: 'Quiz Vide', description: 'Ce contenu PDF ne contient pas de questions de quiz.', variant: 'destructive'});
-      return;
-    }
-    const quizSessionData: GeneratedQuiz = {
-      quiz: content.quiz_data,
-      flashFacts: content.flash_facts_data || [],
-      sourceTitle: content.title || "Quiz PDF"
-    };
-    localStorage.setItem(QUIZ_SESSION_KEY, JSON.stringify(quizSessionData));
-    toast({ title: 'Quiz Prêt !', description: `Votre quiz sur "${quizSessionData.sourceTitle}" démarre.` });
-    router.push('/quiz/play');
+  const handleConfigureQuiz = (pdfId: string) => {
+    router.push(`/quiz/configure-pdf/${pdfId}`);
   };
 
-  const handleViewPdfFlashInfo = (content: PdfContentEntry) => {
-     if (!content.flash_facts_data || content.flash_facts_data.length === 0 || !content.flash_facts_data.some(fact => fact.trim() !== "")) {
-      toast({ title: 'Infos Flash Vides', description: 'Ce contenu PDF ne contient pas d\'informations flash.', variant: 'destructive'});
-      return;
-    }
-    const flashInfoToStore: GeneratedQuiz = {
-      quiz: content.quiz_data || [],
-      flashFacts: content.flash_facts_data,
-      sourceTitle: content.title || "Infos Flash PDF"
-    };
-    localStorage.setItem(ACTIVE_QUIZ_DATA_KEY, JSON.stringify(flashInfoToStore));
-    router.push('/flash-info');
-  };
-
-  const openDeleteConfirmation = (content: PdfContentEntry) => {
-    setContentToDelete(content);
+  const openDeleteConfirmation = (entry: PdfContentEntry) => {
+    setEntryToDelete(entry);
     setShowDeleteDialog(true);
   };
 
-  const handleDeletePdfContent = async () => {
-    if (!contentToDelete || !supabase) return;
+  const handleDeletePdfEntry = async () => {
+    if (!entryToDelete || !supabase) return;
     setIsDeleting(true);
     try {
       const { error } = await supabase
         .from('pdf_generated_content')
         .delete()
-        .eq('id', contentToDelete.id);
+        .eq('id', entryToDelete.id);
 
       if (error) {
         throw error;
       }
-      toast({ title: 'Contenu Supprimé', description: `"${contentToDelete.title}" a été supprimé de la bibliothèque.` });
-      setPdfContents(prevContents => prevContents.filter(c => c.id !== contentToDelete.id));
+      toast({ title: 'Document PDF Supprimé', description: `"${entryToDelete.title}" a été supprimé de la bibliothèque.` });
+      setPdfEntries(prevEntries => prevEntries.filter(e => e.id !== entryToDelete.id));
     } catch (error: any) {
-      console.error('Erreur lors de la suppression du contenu PDF:', error);
+      console.error('Erreur lors de la suppression du document PDF:', error);
       toast({
         title: 'Échec de la Suppression',
-        description: error.message || 'Impossible de supprimer le contenu.',
+        description: error.message || 'Impossible de supprimer le document.',
         variant: 'destructive',
       });
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
-      setContentToDelete(null);
+      setEntryToDelete(null);
     }
   };
 
-
-  if (!isClient || userLoading || (isLoadingData && pdfContents.length === 0 && !user)) {
+  if (!isClient || userLoading || (isLoadingData && pdfEntries.length === 0 && !user)) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -176,42 +147,42 @@ export default function PdfLibraryPage() {
            <div className="mx-auto bg-primary/10 text-primary rounded-full p-3 w-fit mb-4">
             <Library className="h-12 w-12" />
           </div>
-          <CardTitle className="text-3xl">Bibliothèque de Contenu PDF</CardTitle>
-          <CardDescription>Parcourez les quiz et informations flash générés à partir des documents PDF téléchargés.</CardDescription>
+          <CardTitle className="text-3xl">Bibliothèque de Documents PDF</CardTitle>
+          <CardDescription>Parcourez les documents PDF téléchargés et générez des quiz à la demande.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          {isLoadingData && pdfContents.length === 0 ? (
+          {isLoadingData && pdfEntries.length === 0 ? (
              <div className="flex justify-center items-center py-10">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="ml-3 text-muted-foreground">Chargement des contenus...</p>
+                <p className="ml-3 text-muted-foreground">Chargement des documents...</p>
             </div>
-          ) : !isLoadingData && pdfContents.length === 0 ? (
+          ) : !isLoadingData && pdfEntries.length === 0 ? (
             <Card className="bg-muted/50">
               <CardContent className="p-6 text-center">
                 <AlertTriangle className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                <p className="text-lg font-medium">Aucun contenu PDF trouvé.</p>
-                <p className="text-sm text-muted-foreground">Un administrateur doit <Link href="/admin/upload" className="underline hover:text-primary">télécharger des documents</Link> pour générer du contenu.</p>
+                <p className="text-lg font-medium">Aucun document PDF trouvé.</p>
+                <p className="text-sm text-muted-foreground">Un administrateur doit <Link href="/admin/upload" className="underline hover:text-primary">télécharger des documents</Link> pour les lister ici.</p>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-6">
-              {pdfContents.map((content) => (
-                <Card key={content.id} className="shadow-md hover:shadow-lg transition-shadow">
+              {pdfEntries.map((entry) => (
+                <Card key={entry.id} className="shadow-md hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex justify-between items-start">
                         <div>
-                            <CardTitle className="text-xl text-primary">{content.title}</CardTitle>
+                            <CardTitle className="text-xl text-primary">{entry.title}</CardTitle>
                             <div className="flex items-center text-xs text-muted-foreground pt-1">
                             <FileText className="h-4 w-4 mr-1.5" />
                             <span className="truncate max-w-xs sm:max-w-md md:max-w-lg">
-                                Source(s): {content.file_sources.join(', ')}
+                                Source(s): {entry.file_sources.join(', ')}
                             </span>
                             </div>
                             <p className="text-xs text-muted-foreground">
-                            Ajouté le: {format(new Date(content.created_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}
+                            Ajouté le: {format(new Date(entry.created_at), 'dd MMMM yyyy à HH:mm', { locale: fr })}
                             </p>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={() => openDeleteConfirmation(content)} className="text-destructive hover:bg-destructive/10">
+                        <Button variant="ghost" size="icon" onClick={() => openDeleteConfirmation(entry as PdfContentEntry)} className="text-destructive hover:bg-destructive/10">
                             <Trash2 className="h-5 w-5" />
                             <span className="sr-only">Supprimer</span>
                         </Button>
@@ -219,27 +190,15 @@ export default function PdfLibraryPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      {content.quiz_data && content.quiz_data.length > 0 ? `${content.quiz_data.length} questions de quiz disponibles.` : 'Aucun quiz disponible pour ce contenu.'}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {content.flash_facts_data && content.flash_facts_data.length > 0 && content.flash_facts_data.some(f=>f.trim() !== "") ? `${content.flash_facts_data.filter(f=>f.trim() !== "").length} informations flash disponibles.` : 'Aucune information flash disponible pour ce contenu.'}
+                      Générez un quiz personnalisé à partir de ce document.
                     </p>
                   </CardContent>
                   <CardFooter className="flex flex-col sm:flex-row gap-2 justify-end">
                     <Button
-                      variant="outline"
-                      onClick={() => handleViewPdfFlashInfo(content)}
-                      disabled={!content.flash_facts_data || content.flash_facts_data.length === 0 || !content.flash_facts_data.some(fact => fact.trim() !== "")}
+                      onClick={() => handleConfigureQuiz(entry.id)}
                       className="w-full sm:w-auto"
                     >
-                      <Lightbulb className="mr-2 h-4 w-4" /> Voir Infos Flash
-                    </Button>
-                    <Button
-                      onClick={() => handleStartPdfQuiz(content)}
-                      disabled={!content.quiz_data || content.quiz_data.length === 0}
-                      className="w-full sm:w-auto"
-                    >
-                      <PlayCircle className="mr-2 h-4 w-4" /> Démarrer le Quiz
+                      <Settings2 className="mr-2 h-4 w-4" /> Configurer et Générer un Quiz
                     </Button>
                   </CardFooter>
                 </Card>
@@ -257,18 +216,18 @@ export default function PdfLibraryPage() {
         </CardFooter>
       </Card>
 
-      {contentToDelete && (
+      {entryToDelete && (
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Confirmer la Suppression</AlertDialogTitle>
               <AlertDialogDescription>
-                Êtes-vous sûr de vouloir supprimer le contenu PDF intitulé "{contentToDelete.title}" ? Cette action est irréversible.
+                Êtes-vous sûr de vouloir supprimer le document PDF intitulé "{entryToDelete.title}" ? Cette action est irréversible et supprimera les fichiers associés.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={() => setShowDeleteDialog(false)} disabled={isDeleting}>Annuler</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeletePdfContent} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+              <AlertDialogAction onClick={handleDeletePdfEntry} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
                 {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
                 Supprimer
               </AlertDialogAction>
