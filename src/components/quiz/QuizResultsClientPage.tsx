@@ -44,12 +44,12 @@ export function QuizResultsClientPage() {
       } catch (error) {
         console.error("Échec de l'analyse des données de la tentative", error);
         toast({ title: 'Erreur de Chargement des Résultats', description: 'Impossible de charger les résultats du quiz.', variant: 'destructive' });
-        router.push('/'); 
+        router.push('/');
         return;
       }
     } else {
       toast({ title: 'Aucun Résultat Trouvé', description: 'Résultats du quiz non trouvés.', variant: 'destructive' });
-      router.push('/'); 
+      router.push('/');
       return;
     }
     setIsLoading(false);
@@ -61,10 +61,10 @@ export function QuizResultsClientPage() {
       if (attemptData && user?.id && supabase) {
         setIsSavingScore(true);
         // Determine quiz title (simplified for now)
-        let quizTitle = "Quiz"; 
+        let quizTitle = "Quiz";
         // Example: if (attemptData.quizDefinition.sourceType === 'PDF') quizTitle = "Quiz PDF";
         // else if (attemptData.quizDefinition.topic) quizTitle = `Culture Générale: ${attemptData.quizDefinition.topic}`;
-        
+
         // For now, we don't have sourceType or topic in GeneratedQuiz consistently
         // We can add it later for more detailed titles.
         // A simple approach is to check if flashFacts has specific content or quiz has questions.
@@ -79,7 +79,7 @@ export function QuizResultsClientPage() {
           user_id: user.id,
           score: attemptData.score,
           total_questions: attemptData.totalQuestions,
-          quiz_title: quizTitle 
+          quiz_title: quizTitle
         });
 
         if (error) {
@@ -119,17 +119,19 @@ export function QuizResultsClientPage() {
         const newFeedbackItems: FeedbackItem[] = [];
         for (const index of incorrectAnswersIndices) {
           const questionObj = attemptData.quizDefinition.quiz[index];
-          const userAnswer = attemptData.userAnswers[index];
+          const rawUserAnswer = attemptData.userAnswers[index];
+          const userAnswerForFlowAndDisplay = rawUserAnswer === undefined ? "(Non répondu)" : rawUserAnswer;
+
           try {
             const feedbackOutput = await provideEducationalFeedback({
               question: questionObj.question,
-              userAnswer: userAnswer,
+              userAnswer: userAnswerForFlowAndDisplay,
               correctAnswer: questionObj.answer,
-              context: `L'utilisateur a répondu à la question : "${questionObj.question}". Sa réponse était "${userAnswer}", mais la bonne réponse était "${questionObj.answer}". Cette question a été générée en français. Veuillez fournir une explication ET une suggestion d'étude EN FRANÇAIS.`, 
+              context: `L'utilisateur a répondu à la question : "${questionObj.question}". Sa réponse était "${userAnswerForFlowAndDisplay}", mais la bonne réponse était "${questionObj.answer}". Cette question a été générée en français. Veuillez fournir une explication ET une suggestion d'étude EN FRANÇAIS.`,
             });
             newFeedbackItems.push({
               question: questionObj.question,
-              userAnswer,
+              userAnswer: userAnswerForFlowAndDisplay,
               correctAnswer: questionObj.answer,
               explanation: feedbackOutput.explanation,
               studySuggestion: feedbackOutput.studySuggestion,
@@ -138,7 +140,7 @@ export function QuizResultsClientPage() {
             console.error(`Échec de l'obtention du feedback pour la question : ${questionObj.question}`, error);
             newFeedbackItems.push({
               question: questionObj.question,
-              userAnswer,
+              userAnswer: userAnswerForFlowAndDisplay,
               correctAnswer: questionObj.answer,
               explanation: 'Impossible de récupérer l\'explication pour le moment.',
               studySuggestion: 'Suggestion d\'étude non disponible.',
@@ -153,8 +155,8 @@ export function QuizResultsClientPage() {
       fetchFeedbackForAll();
     }
   }, [attemptData, toast]);
-  
-  useEffect(() => { 
+
+  useEffect(() => {
     return () => {
       if (typeof window !== 'undefined') {
          localStorage.removeItem(QUIZ_ATTEMPT_RESULTS_KEY);
@@ -233,7 +235,7 @@ export function QuizResultsClientPage() {
                     <AccordionContent className="px-4 pt-2 pb-4 space-y-3 bg-card border-t">
                       <p><strong>Votre Réponse :</strong> <span className="text-red-600 font-semibold">{item.userAnswer}</span></p>
                       <p><strong>Réponse Correcte :</strong> <span className="text-green-600 font-semibold">{item.correctAnswer}</span></p>
-                      
+
                       <div className="p-3 bg-primary/5 border-l-4 border-primary rounded-md">
                         <div className="flex items-start space-x-2">
                           <MessageSquare className="h-5 w-5 text-primary shrink-0 mt-0.5" />
