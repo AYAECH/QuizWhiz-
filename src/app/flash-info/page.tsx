@@ -100,7 +100,7 @@ export default function FlashInfoPage() {
                 <Card key={index} className="bg-primary/5 border-primary/20 shadow">
                    <CardContent className="p-3 flex items-start space-x-3">
                      <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                     <p className="text-sm text-primary-foreground">{fact}</p>
+                     <p className="text-sm text-primary">{fact}</p>
                    </CardContent>
                 </Card>
               ))}
