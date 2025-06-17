@@ -17,7 +17,7 @@ const GenerateQuizFromPdfInputSchema = z.object({
     .describe(
       "Un document PDF, sous forme d'URI de données qui doit inclure un type MIME et utiliser l'encodage Base64. Format attendu : 'data:<mimetype>;base64,<encoded_data>'."
     )).describe('Un tableau de documents PDF sous forme d\'URI de données.'),
-  numQuestions: z.number().int().min(5).max(1000).describe("Le nombre de questions souhaité à générer, entre 5 et 1000."),
+  numQuestions: z.number().int().min(5).max(100).describe("Le nombre de questions souhaité à générer, entre 5 et 100."),
 });
 export type GenerateQuizFromPdfInput = z.infer<typeof GenerateQuizFromPdfInputSchema>;
 
@@ -37,8 +37,8 @@ export async function generateQuizFromPdf(input: GenerateQuizFromPdfInput): Prom
   if (!input.pdfDataUris || input.pdfDataUris.length === 0) {
     throw new Error('Aucun document PDF fourni.');
   }
-  if (input.numQuestions < 5 || input.numQuestions > 1000) {
-    throw new Error('Le nombre de questions doit être compris entre 5 et 1000.');
+  if (input.numQuestions < 5 || input.numQuestions > 100) { // Updated max to 100
+    throw new Error('Le nombre de questions doit être compris entre 5 et 100.');
   }
   return generateQuizFromPdfFlow(input);
 }
@@ -52,6 +52,7 @@ En fonction de cette analyse, vous produirez une sortie JSON avec deux champs pr
 
 1.  **Génération de Quiz (champ 'quiz') :**
     *   Générez exactement {{{numQuestions}}} questions de quiz à choix multiples, EN FRANÇAIS.
+    *   **IMPORTANT : Chaque objet question dans le tableau 'quiz' DOIT impérativement contenir les trois champs suivants : 'question' (une chaîne de caractères), 'options' (un tableau de 4 chaînes de caractères), et 'answer' (une chaîne de caractères). Ne pas omettre AUCUN de ces champs pour AUCUNE question. Assurez-vous que le JSON est valide et complet pour chaque question.**
     *   Il est crucial que chaque quiz que vous générez soit significativement différent de tout quiz précédent, même s'il est basé sur les mêmes documents. Visez l'originalité dans la formulation des questions, la sélection des sujets et la construction des distracteurs (options incorrectes). Assurez-vous que les questions ne sont pas trop similaires entre elles au sein d'un même quiz.
     *   Chaque question doit avoir 4 options de réponse distinctes, EN FRANÇAIS.
     *   Une seule option peut être la bonne réponse.
@@ -87,19 +88,42 @@ const generateQuizFromPdfFlow = ai.defineFlow(
     outputSchema: GenerateQuizFromPdfOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
+    const {output} = await prompt(input); // Genkit performs schema validation here
+    
+    // These checks are mostly for cases where the AI might return an empty but valid structure,
+    // or if the schema validation was somehow bypassed or output was manipulated before return.
+    // The primary validation against the schema happens implicitly with `await prompt(input)`.
     if (!output || !output.quiz || output.quiz.length === 0) {
       throw new Error('L\'IA n\'a pas réussi à générer des questions de quiz ou a retourné un quiz vide.');
     }
-    if (output.quiz.length < Math.max(1, input.numQuestions / 2)) {
-        console.warn(`L'IA n'a généré que ${output.quiz.length} questions, soit moins de la moitié des ${input.numQuestions} demandées.`);
-    }
-    if (!output.flashFacts || output.flashFacts.length === 0 || output.flashFacts.every(fact => fact.trim() === "" || fact.toLowerCase().includes("aucune information flash spécifique"))) {
-        console.warn('L\'IA n\'a pas généré d\'informations flash significatives.');
-        if (output.flashFacts && (output.flashFacts.length === 0 || output.flashFacts.every(fact => fact.trim() === "" || fact.toLowerCase().includes("aucune information flash spécifique")))) {
-          output.flashFacts = undefined; 
+
+    // Further check for individual question validity, though schema should catch most of this
+    const validQuiz = output.quiz.filter(q => q.question && q.options && Array.isArray(q.options) && q.options.length > 0 && q.answer);
+    if (validQuiz.length !== output.quiz.length) {
+        console.warn(`Certaines questions générées par l'IA étaient incomplètes et ont été implicitement filtrées par la validation du schéma ou manquaient. Quiz initial: ${output.quiz.length}, Quiz après validation Zod implicite (ou si partiellement valide): ${validQuiz.length}`);
+        // If the number of questions becomes 0 after this, it might indicate a more severe generation issue.
+        if (validQuiz.length === 0) {
+            throw new Error("L'IA n'a pas généré de questions de quiz valides après filtrage interne.");
         }
     }
-    return output!;
+    
+    // This check is more about quantity than individual validity (which Zod handles)
+    if (validQuiz.length < Math.max(1, input.numQuestions / 2)) { // Check against validQuiz.length
+        console.warn(`L'IA n'a généré que ${validQuiz.length} questions valides, soit moins de la moitié des ${input.numQuestions} demandées.`);
+    }
+
+    // Ensure flashFacts handling remains
+    let finalFlashFacts = output.flashFacts;
+    if (!finalFlashFacts || finalFlashFacts.length === 0 || finalFlashFacts.every(fact => fact.trim() === "" || fact.toLowerCase().includes("aucune information flash spécifique"))) {
+        console.warn('L\'IA n\'a pas généré d\'informations flash significatives.');
+        finalFlashFacts = undefined; 
+    }
+
+    // Return a new object with the potentially filtered quiz and processed flashFacts
+    return {
+        quiz: validQuiz,
+        flashFacts: finalFlashFacts
+    };
   }
 );
+

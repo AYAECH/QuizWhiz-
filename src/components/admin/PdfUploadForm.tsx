@@ -17,7 +17,7 @@ import type { QuizQuestion } from '@/types';
 
 export function PdfUploadForm() {
   const [files, setFiles] = useState<File[] | null>(null);
-  const [numQuestions, setNumQuestions] = useState<string>("20"); // Max 1000 dans le flux
+  const [numQuestions, setNumQuestions] = useState<string>("20"); // Max 100 in the flow
   const [isLoading, setIsLoading] = useState(false);
   const [generatedContentInfo, setGeneratedContentInfo] = useState<{ title: string; questions: number; hasFlashFacts: boolean } | null>(null);
   const { toast } = useToast();
@@ -60,10 +60,10 @@ export function PdfUploadForm() {
     }
 
     const parsedNumQuestions = parseInt(numQuestions, 10);
-    if (isNaN(parsedNumQuestions) || parsedNumQuestions < 5 || parsedNumQuestions > 1000) {
+    if (isNaN(parsedNumQuestions) || parsedNumQuestions < 5 || parsedNumQuestions > 100) { // Updated max to 100
       toast({
         title: 'Nombre de Questions Invalide',
-        description: 'Veuillez entrer un nombre entre 5 et 1000.',
+        description: 'Veuillez entrer un nombre entre 5 et 100.', // Updated max to 100
         variant: 'destructive',
       });
       return;
@@ -110,7 +110,7 @@ export function PdfUploadForm() {
           const { error: insertError } = await supabase
             .from('pdf_generated_content')
             .insert({
-              quiz_data: contentOutput.quiz as QuizQuestion[], // Assurez-vous que le type correspond
+              quiz_data: contentOutput.quiz as QuizQuestion[], 
               flash_facts_data: contentOutput.flashFacts,
               file_names: fileNamesString,
               is_active: true,
@@ -145,7 +145,6 @@ export function PdfUploadForm() {
           description: (aiError instanceof Error ? aiError.message : String(aiError)) || 'L\'IA n\'a pas pu traiter le(s) PDF ou une erreur de base de données est survenue.',
           variant: 'destructive',
         });
-        // Ne pas supprimer la clé localStorage ici, car elle n'est plus gérée par ce composant pour le contenu PDF.
       } finally {
         setIsLoading(false);
       }
@@ -187,14 +186,14 @@ export function PdfUploadForm() {
           value={numQuestions}
           onChange={handleNumQuestionsChange}
           min="5"
-          max="1000" // Correspond au max du flow
+          max="100" // Updated max to 100
           step="1"
           className="w-full"
           aria-describedby="num-questions-help"
           disabled={isLoading}
         />
         <p id="num-questions-help" className="text-sm text-muted-foreground">
-          Entrez le nombre de questions de quiz souhaité (5-1000).
+          Entrez le nombre de questions de quiz souhaité (5-100). 
         </p>
       </div>
 
@@ -239,7 +238,7 @@ export function PdfUploadForm() {
           <div>
             <p className="text-sm font-semibold">Note Importante :</p>
             <p className="text-xs">
-              La génération et sauvegarde du contenu peut prendre quelques instants. Assurez-vous que le contenu du PDF est clair. Les nouvelles données remplaceront le contenu PDF actif précédent.
+              La génération et sauvegarde du contenu peut prendre quelques instants. Assurez-vous que le contenu du PDF est clair et que le nombre de questions demandé n'est pas excessif (max 100). Les nouvelles données remplaceront le contenu PDF actif précédent.
             </p>
           </div>
         </CardContent>
@@ -247,3 +246,4 @@ export function PdfUploadForm() {
     </form>
   );
 }
+
