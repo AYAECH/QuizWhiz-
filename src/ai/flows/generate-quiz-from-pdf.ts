@@ -1,9 +1,9 @@
 
 'use server';
 /**
- * @fileOverview Generates a multiple-choice quiz from one or more PDF documents.
+ * @fileOverview Generates a multiple-choice quiz and flash information from one or more PDF documents.
  *
- * - generateQuizFromPdf - A function that handles the quiz generation process.
+ * - generateQuizFromPdf - A function that handles the quiz and flash info generation process.
  * - GenerateQuizFromPdfInput - The input type for the generateQuizFromPdf function.
  * - GenerateQuizFromPdfOutput - The return type for the generateQuizFromPdf function.
  */
@@ -29,6 +29,7 @@ const GenerateQuizFromPdfOutputSchema = z.object({
       answer: z.string().describe('The correct answer to the question.'),
     })
   ).describe('The generated quiz questions and answers.'),
+  flashInformation: z.string().optional().describe('A concise summary or interesting facts extracted from the PDF documents, suitable for quick learning.'),
 });
 export type GenerateQuizFromPdfOutput = z.infer<typeof GenerateQuizFromPdfOutputSchema>;
 
@@ -46,19 +47,20 @@ const prompt = ai.definePrompt({
   name: 'generateQuizFromPdfPrompt',
   input: {schema: GenerateQuizFromPdfInputSchema},
   output: {schema: GenerateQuizFromPdfOutputSchema},
-  prompt: `You are an expert quiz generator tasked with creating high-quality, unique quizzes.
-Your task is to meticulously analyze the content from ALL the provided PDF documents and generate exactly {{{numQuestions}}} multiple-choice quiz questions.
+  prompt: `You are an expert content generator. Your task is to meticulously analyze the content from ALL the provided PDF documents.
+Based on this analysis, you will:
+1.  Generate exactly {{{numQuestions}}} multiple-choice quiz questions.
+2.  Additionally, provide a "Flash Information" section. This should be a concise summary (e.g., 2-4 paragraphs, or a few bullet points) of the most important facts, key takeaways, or interesting snippets from the document(s), suitable for quick learning. This flash information should be returned in the 'flashInformation' field of the JSON output.
 
-It is crucial that each quiz you generate is significantly different from any previous one, even if based on the same documents. Strive for originality in question formulation, topic selection, and the construction of distractors. Make sure the questions are not too similar to each other within the same quiz.
-
-For each quiz:
-1.  Generate exactly {{{numQuestions}}} questions.
-2.  Each question must have 4 distinct answer options.
-3.  Only one option can be the correct answer.
-4.  Ensure questions cover a wide and diverse range of topics from the documents. Avoid concentrating on a single section or repeating concepts excessively.
-5.  The questions themselves should be distinct from one another within the same quiz.
-6.  Phrase questions clearly and unambiguously.
-7.  The correct answer must be directly and clearly verifiable from the provided document content.
+For the quiz:
+-   It is crucial that each quiz you generate is significantly different from any previous one, even if based on the same documents. Strive for originality in question formulation, topic selection, and the construction of distractors. Make sure the questions are not too similar to each other within the same quiz.
+-   Generate exactly {{{numQuestions}}} questions.
+-   Each question must have 4 distinct answer options.
+-   Only one option can be the correct answer.
+-   Ensure questions cover a wide and diverse range of topics from the documents. Avoid concentrating on a single section or repeating concepts excessively.
+-   The questions themselves should be distinct from one another within the same quiz.
+-   Phrase questions clearly and unambiguously.
+-   The correct answer must be directly and clearly verifiable from the provided document content.
 
 Output format must be JSON.
 
@@ -70,7 +72,7 @@ Document Content:
 --- End of Document Content ---
 {{/each}}
 {{else}}
-Error: No PDF documents were provided in the input. Cannot generate quiz.
+Error: No PDF documents were provided in the input. Cannot generate content.
 {{/if}}
   `,
 });
@@ -90,6 +92,11 @@ const generateQuizFromPdfFlow = ai.defineFlow(
     // but this provides a basic check.
     if (output.quiz.length < Math.max(1, input.numQuestions / 2)) {
         console.warn(`AI generated only ${output.quiz.length} questions, less than half of the requested ${input.numQuestions}.`);
+    }
+    if (!output.flashInformation) {
+        console.warn('AI did not generate flash information.');
+        // You could add a default or empty string here if preferred,
+        // output.flashInformation = "";
     }
     return output!;
   }

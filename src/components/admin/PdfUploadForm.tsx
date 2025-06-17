@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { generateQuizFromPdf, type GenerateQuizFromPdfOutput } from '@/ai/flows/generate-quiz-from-pdf';
-import { Loader2, UploadCloud, FileText, AlertTriangle, ListPlus, FileArchive } from 'lucide-react';
+import { Loader2, UploadCloud, FileText, AlertTriangle, ListPlus, FileArchive, Info } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const QUIZ_DATA_STORAGE_KEY = 'quizwhiz_active_quiz_data';
@@ -16,7 +16,7 @@ export function PdfUploadForm() {
   const [files, setFiles] = useState<File[] | null>(null);
   const [numQuestions, setNumQuestions] = useState<string>("20");
   const [isLoading, setIsLoading] = useState(false);
-  const [generatedQuizInfo, setGeneratedQuizInfo] = useState<{ title: string; questions: number } | null>(null);
+  const [generatedContentInfo, setGeneratedContentInfo] = useState<{ title: string; questions: number; hasFlashInfo: boolean } | null>(null);
   const { toast } = useToast();
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -35,7 +35,7 @@ export function PdfUploadForm() {
         return;
       }
       setFiles(selectedFiles);
-      setGeneratedQuizInfo(null); 
+      setGeneratedContentInfo(null); 
     } else {
       setFiles(null);
     }
@@ -67,7 +67,7 @@ export function PdfUploadForm() {
     }
 
     setIsLoading(true);
-    setGeneratedQuizInfo(null);
+    setGeneratedContentInfo(null);
 
     try {
       const pdfDataUrisPromises = files.map(file => {
@@ -82,16 +82,21 @@ export function PdfUploadForm() {
       const pdfDataUris = await Promise.all(pdfDataUrisPromises);
         
       try {
-        const quizOutput: GenerateQuizFromPdfOutput = await generateQuizFromPdf({ pdfDataUris, numQuestions: parsedNumQuestions });
+        const contentOutput: GenerateQuizFromPdfOutput = await generateQuizFromPdf({ pdfDataUris, numQuestions: parsedNumQuestions });
 
-        if (quizOutput && quizOutput.quiz && quizOutput.quiz.length > 0) {
-          localStorage.setItem(QUIZ_DATA_STORAGE_KEY, JSON.stringify(quizOutput));
+        if (contentOutput && contentOutput.quiz && contentOutput.quiz.length > 0) {
+          // contentOutput now includes quiz and potentially flashInformation
+          localStorage.setItem(QUIZ_DATA_STORAGE_KEY, JSON.stringify(contentOutput)); 
           
           const fileNames = files.map(f => f.name).join(', ');
-          setGeneratedQuizInfo({ title: fileNames, questions: quizOutput.quiz.length });
+          setGeneratedContentInfo({ 
+            title: fileNames, 
+            questions: contentOutput.quiz.length,
+            hasFlashInfo: !!contentOutput.flashInformation && contentOutput.flashInformation.length > 0
+          });
           toast({
-            title: 'Quiz Generated Successfully!',
-            description: `${quizOutput.quiz.length} questions were generated from ${files.length} document(s).`,
+            title: 'Content Generated Successfully!',
+            description: `${contentOutput.quiz.length} questions ${contentOutput.flashInformation ? 'and flash information ' : ''}were generated from ${files.length} document(s).`,
           });
         } else {
           throw new Error('AI failed to generate quiz questions or returned an empty quiz.');
@@ -99,7 +104,7 @@ export function PdfUploadForm() {
       } catch (aiError) {
         console.error('AI processing error:', aiError);
         toast({
-          title: 'Error Generating Quiz',
+          title: 'Error Generating Content',
           description: (aiError instanceof Error ? aiError.message : String(aiError)) || 'The AI failed to process the PDF(s). Please try other document(s) or check the console.',
           variant: 'destructive',
         });
@@ -126,14 +131,14 @@ export function PdfUploadForm() {
           id="pdf-upload"
           type="file"
           accept="application/pdf"
-          multiple // Allow multiple files
+          multiple
           onChange={handleFileChange}
           className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
           aria-describedby="file-upload-help"
           disabled={isLoading}
         />
         <p id="file-upload-help" className="text-sm text-muted-foreground">
-          Select one or more PDF files to generate a quiz.
+          Select one or more PDF files to generate a quiz and flash information.
         </p>
       </div>
 
@@ -156,7 +161,7 @@ export function PdfUploadForm() {
         </p>
       </div>
 
-      {files && files.length > 0 && !generatedQuizInfo && (
+      {files && files.length > 0 && !generatedContentInfo && (
         <Card className="border-dashed border-primary bg-primary/5">
           <CardContent className="p-4 text-center">
             {files.length === 1 ? <FileText className="mx-auto h-10 w-10 text-primary mb-2" /> : <FileArchive className="mx-auto h-10 w-10 text-primary mb-2" />}
@@ -166,12 +171,16 @@ export function PdfUploadForm() {
         </Card>
       )}
       
-      {generatedQuizInfo && (
+      {generatedContentInfo && (
          <Card className="bg-green-50 border-green-500">
-          <CardContent className="p-4 text-center">
-            <ListPlus className="mx-auto h-10 w-10 text-green-700 mb-2" />
-            <p className="text-sm font-medium text-green-700">Quiz generated from: {generatedQuizInfo.title.length > 50 ? `${generatedQuizInfo.title.substring(0,50)}...` : generatedQuizInfo.title}</p>
-            <p className="text-xs text-green-600">{generatedQuizInfo.questions} questions created.</p>
+          <CardContent className="p-4 text-center space-y-1">
+            <div className="flex justify-center items-center gap-2">
+                <ListPlus className="h-8 w-8 text-green-700" />
+                {generatedContentInfo.hasFlashInfo && <Info className="h-8 w-8 text-green-700" />}
+            </div>
+            <p className="text-sm font-medium text-green-700">Content generated from: {generatedContentInfo.title.length > 50 ? `${generatedContentInfo.title.substring(0,50)}...` : generatedContentInfo.title}</p>
+            <p className="text-xs text-green-600">{generatedContentInfo.questions} questions created.</p>
+            {generatedContentInfo.hasFlashInfo && <p className="text-xs text-green-600">Flash information also generated.</p>}
           </CardContent>
         </Card>
       )}
@@ -182,7 +191,7 @@ export function PdfUploadForm() {
         ) : (
           <UploadCloud className="mr-2 h-4 w-4" />
         )}
-        {isLoading ? 'Processing PDF(s)...' : 'Upload and Generate Quiz'}
+        {isLoading ? 'Processing PDF(s)...' : 'Upload and Generate Content'}
       </Button>
       
       <Card className="mt-4 bg-yellow-50 border-yellow-400 text-yellow-700">
@@ -191,7 +200,7 @@ export function PdfUploadForm() {
           <div>
             <p className="text-sm font-semibold">Important Note:</p>
             <p className="text-xs">
-              Quiz generation may take a few moments, especially for a large number of questions. Ensure PDF content is clear for best results.
+              Content generation may take a few moments, especially for a large number of questions. Ensure PDF content is clear for best results.
             </p>
           </div>
         </CardContent>

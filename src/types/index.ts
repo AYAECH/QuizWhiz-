@@ -1,3 +1,4 @@
+
 export interface User {
   name: string;
   email: string;
@@ -11,6 +12,7 @@ export interface QuizQuestion {
 
 export interface GeneratedQuiz {
   quiz: QuizQuestion[];
+  flashInformation?: string; 
 }
 
 export interface QuizAttempt {
@@ -18,7 +20,6 @@ export interface QuizAttempt {
   userAnswers: Record<number, string>; // questionIndex: selectedOptionString
   score: number;
   totalQuestions: number;
-  // pdfUriUsed?: string; // Removed to avoid issues with large PDF URIs in localStorage
 }
 
 export interface FeedbackItem {
