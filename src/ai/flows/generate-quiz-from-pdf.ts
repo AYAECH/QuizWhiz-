@@ -39,7 +39,7 @@ export type GenerateQuizFromPdfOutput = z.infer<typeof GenerateQuizFromPdfOutput
 // Lenient schemas for parsing the AI's direct output
 const LenientQuizQuestionSchema = z.object({
   question: z.string().optional(),
-  options: z.array(z.string()).optional(),
+  options: z.array(z.string()).optional(), // Options array can be of any length or missing here
   answer: z.string().optional(),
 });
 const LenientGenerateQuizFromPdfOutputSchema = z.object({
@@ -67,7 +67,7 @@ En fonction de cette analyse, vous produirez une sortie JSON avec deux champs pr
 
 1.  **Génération de Quiz (champ 'quiz') :**
     *   Générez environ {{{numQuestions}}} questions de quiz à choix multiples, EN FRANÇAIS. Essayez de vous approcher de ce nombre.
-    *   **IMPORTANT : Chaque objet question dans le tableau 'quiz' DOIT impérativement contenir les trois champs suivants : 'question' (une chaîne de caractères non vide), 'options' (un tableau de EXACTEMENT 4 chaînes de caractères non vides et distinctes), et 'answer' (une chaîne de caractères non vide, qui doit être l'une des 4 options). Ne pas omettre AUCUN de ces champs pour AUCUNE question. Assurez-vous que le JSON est valide et complet pour chaque question.**
+    *   **CRUCIAL : Chaque objet question dans le tableau 'quiz' DOIT impérativement contenir les trois champs suivants : 'question' (une chaîne de caractères non vide), 'options' (un tableau de EXACTEMENT 4 chaînes de caractères non vides et distinctes), et 'answer' (une chaîne de caractères non vide, qui doit être l'une des 4 options). Ne pas omettre AUCUN de ces champs pour AUCUNE question. Assurez-vous que le JSON est valide et complet pour chaque question.**
     *   Si, après une analyse approfondie, aucune question de quiz pertinente et **entièrement conforme aux exigences ci-dessus** ne peut être extraite du document, retournez **impérativement un tableau vide (\`[]\`)** pour le champ 'quiz'. Autrement, si des questions sont générées, assurez-vous que chaque objet question respecte la structure {question: string, options: string[4], answer: string}.
     *   Il est crucial que chaque quiz que vous générez soit significativement différent de tout quiz précédent, même s'il est basé sur les mêmes documents. Visez l'originalité dans la formulation des questions, la sélection des sujets et la construction des distracteurs (options incorrectes). Assurez-vous que les questions ne sont pas trop similaires entre elles au sein d'un même quiz.
     *   Chaque question doit avoir EXACTEMENT 4 options de réponse distinctes et plausibles, EN FRANÇAIS. Toutes les options doivent être des chaînes de caractères non vides.
@@ -108,68 +108,85 @@ const generateQuizFromPdfFlow = ai.defineFlow(
   async (input): Promise<GenerateQuizFromPdfOutput> => {
     const {output: lenientOutput} = await prompt(input); // Genkit performs schema validation here (lenient)
 
+    console.log('[PDF_QUIZ_FLOW] Raw AI output (lenient):', JSON.stringify(lenientOutput, null, 2));
+
     let validQuiz: QuizQuestion[] = [];
     if (lenientOutput?.quiz && Array.isArray(lenientOutput.quiz)) {
+      console.log(`[PDF_QUIZ_FLOW] AI provided ${lenientOutput.quiz.length} quiz items before filtering.`);
       validQuiz = lenientOutput.quiz.filter(q =>
         q.question && typeof q.question === 'string' && q.question.trim() !== '' &&
         q.options && Array.isArray(q.options) && q.options.length === 4 &&
         q.options.every(opt => typeof opt === 'string' && opt.trim() !== '') &&
         q.answer && typeof q.answer === 'string' && q.answer.trim() !== '' &&
-        q.options.includes(q.answer) 
-      ).map(q => ({ 
+        q.options.includes(q.answer)
+      ).map(q => ({
           question: q.question!,
           options: q.options as [string, string, string, string], // type assertion after validation
           answer: q.answer!
       }));
+      console.log(`[PDF_QUIZ_FLOW] After filtering, ${validQuiz.length} quiz items are valid.`);
+
+      if (validQuiz.length === 0 && lenientOutput.quiz.length > 0) {
+        console.warn('[PDF_QUIZ_FLOW] All quiz items provided by AI were filtered out. Examples of invalid items (first 2):');
+        lenientOutput.quiz.slice(0, 2).forEach((invalidItem, idx) => {
+          console.warn(`[PDF_QUIZ_FLOW] Invalid item ${idx + 1}:`, JSON.stringify(invalidItem, null, 2));
+        });
+      }
     } else if (lenientOutput && !lenientOutput.quiz) {
-        console.warn("L'IA n'a pas retourné de champ 'quiz' dans sa sortie lors de la génération à partir de PDF.");
+        console.warn("[PDF_QUIZ_FLOW] AI did not return a 'quiz' field in its output.");
+    } else if (lenientOutput?.quiz && !Array.isArray(lenientOutput.quiz)) {
+        console.warn("[PDF_QUIZ_FLOW] AI returned 'quiz' field, but it was not an array:", JSON.stringify(lenientOutput.quiz, null, 2));
     }
 
+
     let finalFlashFacts: string[] | undefined = undefined;
-    if (lenientOutput?.flashFacts && Array.isArray(lenientOutput.flashFacts) && lenientOutput.flashFacts.length > 0) {
+    if (lenientOutput?.flashFacts && Array.isArray(lenientOutput.flashFacts)) {
+        console.log(`[PDF_QUIZ_FLOW] AI provided ${lenientOutput.flashFacts.length} flash facts before filtering.`);
         const filteredFlashFacts = lenientOutput.flashFacts.filter(fact => typeof fact === 'string' && fact.trim() !== "" && !fact.toLowerCase().includes("aucune information flash spécifique") && !fact.toLowerCase().includes("aucun fait flash adapté"));
         if (filteredFlashFacts.length > 0) {
             finalFlashFacts = filteredFlashFacts;
         } else {
-             console.warn('Les informations flash générées par l\'IA (PDF) étaient vides ou non significatives après filtrage.');
+             console.warn('[PDF_QUIZ_FLOW] Flash facts generated by AI were empty or non-significant after filtering.');
         }
+        console.log(`[PDF_QUIZ_FLOW] After filtering, ${finalFlashFacts?.length || 0} flash facts are valid.`);
+
+        if ((!finalFlashFacts || finalFlashFacts.length === 0) && lenientOutput.flashFacts.length > 0) {
+             console.warn('[PDF_QUIZ_FLOW] All flash facts provided by AI were filtered out. Examples of invalid items (first 2):');
+            lenientOutput.flashFacts.slice(0, 2).forEach((invalidItem, idx) => {
+                console.warn(`[PDF_QUIZ_FLOW] Invalid flash fact item ${idx + 1}:`, JSON.stringify(invalidItem, null, 2));
+            });
+        }
+
     } else if (lenientOutput && !lenientOutput.flashFacts) {
-        console.warn("L'IA n'a pas retourné de champ 'flashFacts' dans sa sortie (PDF), ou il était vide.");
+        console.warn("[PDF_QUIZ_FLOW] AI did not return a 'flashFacts' field in its output, or it was empty.");
+    } else if (lenientOutput?.flashFacts && !Array.isArray(lenientOutput.flashFacts)){
+        console.warn("[PDF_QUIZ_FLOW] AI returned 'flashFacts' field, but it was not an array:", JSON.stringify(lenientOutput.flashFacts, null, 2));
     }
-    
-    // Log if raw AI data for quiz was present but all got filtered out
-    if (lenientOutput?.quiz && validQuiz.length === 0 && lenientOutput.quiz.length > 0) {
-        console.warn('Données brutes de l\'IA pour le quiz PDF (reçues mais toutes filtrées car invalides):', JSON.stringify(lenientOutput.quiz, null, 2));
-    }
-    // Log if raw AI data for flash facts was present but all got filtered out
-    if (lenientOutput?.flashFacts && (!finalFlashFacts || finalFlashFacts.length === 0) && lenientOutput.flashFacts.length > 0) {
-        console.warn('Données brutes de l\'IA pour les flash facts PDF (reçues mais toutes filtrées car invalides/vides):', JSON.stringify(lenientOutput.flashFacts, null, 2));
-    }
+
 
     // The UI (PdfUploadForm) will handle the case where both are empty by showing a toast.
     // This flow will now always return a valid GenerateQuizFromPdfOutput structure, even if arrays are empty.
     if (validQuiz.length === 0 && (!finalFlashFacts || finalFlashFacts.length === 0)) {
       if (!lenientOutput?.quiz && !lenientOutput?.flashFacts) {
-        console.warn('L\'IA n\'a retourné ni quiz ni flashFacts dans sa sortie brute pour le(s) PDF. Le flux retournera des tableaux vides.');
+        console.warn('[PDF_QUIZ_FLOW] AI did not return neither quiz nor flashFacts in its raw output. Flow will return empty arrays.');
       } else {
-        console.warn("L'IA n'a pas réussi à générer de contenu significatif (ni quiz valides, ni informations flash pertinentes) après filtrage pour le(s) PDF. Le flux retournera des tableaux vides.");
+        console.warn("[PDF_QUIZ_FLOW] AI failed to generate any significant content (neither valid quiz questions nor relevant flash facts) after filtering. Flow will return empty arrays.");
       }
     }
-    
+
     if (validQuiz.length === 0 && finalFlashFacts && finalFlashFacts.length > 0) {
-      console.warn("Aucune question de quiz valide n'a été générée à partir du PDF, mais des informations flash ont été extraites. Nombre de PDF traités : " + input.pdfDataUris.length);
-    } else if (validQuiz.length > 0 && validQuiz.length < input.numQuestions * 0.5) { 
-      console.warn(`L'IA n'a généré que ${validQuiz.length} questions valides sur les ${input.numQuestions} demandées à partir du PDF. Nombre de PDF traités : ${input.pdfDataUris.length}. Cela peut indiquer un problème avec le contenu du PDF ou la capacité de l'IA à le structurer.`);
+      console.warn("[PDF_QUIZ_FLOW] No valid quiz questions were generated from PDF, but flash facts were extracted. Number of PDFs processed: " + input.pdfDataUris.length);
+    } else if (validQuiz.length > 0 && validQuiz.length < input.numQuestions * 0.5) {
+      console.warn(`[PDF_QUIZ_FLOW] AI generated only ${validQuiz.length} valid questions out of ${input.numQuestions} requested from PDF. Number of PDFs processed: ${input.pdfDataUris.length}. This may indicate an issue with PDF content or AI's ability to structure it.`);
     }
-    
+
     if (validQuiz.length > 0 && (!finalFlashFacts || finalFlashFacts.length === 0)) {
-        console.warn("Des questions de quiz valides ont été générées à partir du PDF, mais aucune information flash significative. Nombre de PDF traités : " + input.pdfDataUris.length);
+        console.warn("[PDF_QUIZ_FLOW] Valid quiz questions were generated from PDF, but no significant flash facts. Number of PDFs processed: " + input.pdfDataUris.length);
     }
 
     return {
-      quiz: validQuiz, 
-      flashFacts: finalFlashFacts, 
+      quiz: validQuiz,
+      flashFacts: finalFlashFacts,
     };
   }
 );
-
