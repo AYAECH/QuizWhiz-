@@ -68,7 +68,7 @@ En fonction de cette analyse, vous produirez une sortie JSON avec deux champs pr
 1.  **Génération de Quiz (champ 'quiz') :**
     *   Générez environ {{{numQuestions}}} questions de quiz à choix multiples, EN FRANÇAIS, **strictement basées sur le contenu des documents PDF fournis**.
     *   **CRUCIAL : Chaque objet question dans le tableau 'quiz' DOIT impérativement contenir les trois champs suivants : 'question' (une chaîne de caractères non vide), 'options' (un tableau de EXACTEMENT 4 chaînes de caractères non vides et distinctes), et 'answer' (une chaîne de caractères non vide, qui doit être l'une des 4 options). Ne pas omettre AUCUN de ces champs pour AUCUNE question. Assurez-vous que le JSON est valide et complet pour chaque question.**
-    *   Si, après une analyse approfondie, aucune question de quiz pertinente et **entièrement conforme aux exigences ci-dessus** ne peut être extraite du document, retournez **impérativement un tableau vide (\`[]\`)** pour le champ 'quiz'. Autrement, si des questions sont générées, assurez-vous que chaque objet question respecte la structure {question: string, options: string[4], answer: string}.
+    *   **Absolument crucial :** Si vous ne pouvez pas générer de questions qui respectent **toutes** ces règles (par exemple, si le document est vide, illisible, ou ne contient pas assez d'informations pour le nombre de questions demandé), vous DEVEZ retourner `"quiz": []` (un tableau vide pour la clé 'quiz') dans l'objet JSON. NE PAS omettre la clé 'quiz'. NE PAS retourner d'objets question incomplets ou mal formés. Autrement, si des questions sont générées, assurez-vous que chaque objet question respecte la structure {question: string, options: string[4], answer: string}.
     *   **IMPORTANT : À chaque fois que ce prompt est appelé, même si les documents PDF d'entrée sont identiques, vous devez vous efforcer de générer un ENSEMBLE DE QUESTIONS DISTINCT ET ORIGINAL. Variez la formulation des questions, les sujets abordés (tout en restant fidèle au contenu du PDF), et les options de réponse (distracteurs). Ne répétez pas les questions générées lors d'appels précédents.**
     *   Chaque question doit avoir EXACTEMENT 4 options de réponse distinctes et plausibles, EN FRANÇAIS. Toutes les options doivent être des chaînes de caractères non vides.
     *   Une seule option peut être la bonne réponse.
@@ -164,7 +164,7 @@ const generateQuizFromPdfFlow = ai.defineFlow(
     }
 
 
-    // The UI (PdfUploadForm or ConfigurePdfQuizPage) will handle the case where both are empty by showing a toast.
+    // The UI (ConfigurePdfQuizPage) will handle the case where both are empty by showing a toast.
     // This flow will now always return a valid GenerateQuizFromPdfOutput structure, even if arrays are empty.
     if (validQuiz.length === 0 && (!finalFlashFacts || finalFlashFacts.length === 0)) {
       if (!lenientOutput?.quiz && !lenientOutput?.flashFacts) {
@@ -176,7 +176,7 @@ const generateQuizFromPdfFlow = ai.defineFlow(
 
     if (validQuiz.length === 0 && finalFlashFacts && finalFlashFacts.length > 0) {
       console.warn("[PDF_QUIZ_FLOW] No valid quiz questions were generated from PDF, but flash facts were extracted. Number of PDFs processed: " + input.pdfDataUris.length);
-    } else if (validQuiz.length > 0 && validQuiz.length < input.numQuestions * 0.5) {
+    } else if (validQuiz.length > 0 && validQuiz.length < input.numQuestions * 0.5) { // If less than 50% (was 0.8) of requested questions are valid
       console.warn(`[PDF_QUIZ_FLOW] AI generated only ${validQuiz.length} valid questions out of ${input.numQuestions} requested from PDF. Number of PDFs processed: ${input.pdfDataUris.length}. This may indicate an issue with PDF content or AI's ability to structure it.`);
     }
 
