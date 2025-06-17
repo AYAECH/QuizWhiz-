@@ -36,8 +36,8 @@ export function PdfUploadForm() {
         return;
       }
       setFiles(selectedFiles);
-      if (!title) { // Auto-fill title if empty and files are selected
-        setTitle(selectedFiles.map(f => f.name).join(', ').substring(0, 100)); // Max 100 chars for auto-title
+      if (!title) { 
+        setTitle(selectedFiles.map(f => f.name).join(', ').substring(0, 100)); 
       }
       setGeneratedContentInfo(null); 
     } else {
@@ -104,18 +104,21 @@ export function PdfUploadForm() {
       const pdfDataUris = await Promise.all(pdfDataUrisPromises);
       const fileNamesArray = files.map(f => f.name);
         
+      // This outer try-catch is for the overall process including AI call and DB insert.
       try {
         const contentOutput: GenerateQuizFromPdfOutput = await generateQuizFromPdf({ pdfDataUris, numQuestions: parsedNumQuestions });
 
-        if (contentOutput && ( (contentOutput.quiz && contentOutput.quiz.length > 0) || (contentOutput.flashFacts && contentOutput.flashFacts.length > 0 && contentOutput.flashFacts.some(f => f.trim() !== "")) )) {
-          
+        const hasValidQuiz = contentOutput.quiz && contentOutput.quiz.length > 0;
+        const hasValidFlashFacts = contentOutput.flashFacts && contentOutput.flashFacts.length > 0 && contentOutput.flashFacts.some(f => f.trim() !== "");
+
+        if (hasValidQuiz || hasValidFlashFacts) {
           const { error: insertError } = await supabase
             .from('pdf_generated_content')
             .insert({
               title: title.trim(),
               file_sources: fileNamesArray,
-              quiz_data: contentOutput.quiz as QuizQuestion[] | null, 
-              flash_facts_data: contentOutput.flashFacts as string[] | null,
+              quiz_data: hasValidQuiz ? contentOutput.quiz as QuizQuestion[] : null, 
+              flash_facts_data: hasValidFlashFacts ? contentOutput.flashFacts : null,
             });
           
           if (insertError) {
@@ -123,50 +126,53 @@ export function PdfUploadForm() {
             throw new Error('Impossible de sauvegarder le nouveau contenu généré. Détails: ' + insertError.message);
           }
           
-          const hasMeaningfulFlashFacts = !!contentOutput.flashFacts && contentOutput.flashFacts.length > 0 && contentOutput.flashFacts.some(fact => fact.trim() !== "" && !fact.toLowerCase().includes("aucune information flash spécifique"));
-          const numGeneratedQuestions = contentOutput.quiz ? contentOutput.quiz.length : 0;
+          const numGeneratedQuestions = hasValidQuiz ? contentOutput.quiz.length : 0;
           
           setGeneratedContentInfo({ 
             title: title.trim(), 
             questions: numGeneratedQuestions,
-            hasFlashFacts: hasMeaningfulFlashFacts,
+            hasFlashFacts: hasValidFlashFacts,
             fileNames: fileNamesArray
           });
 
           toast({
             title: 'Contenu PDF Ajouté !',
-            description: `"${title.trim()}" avec ${numGeneratedQuestions} questions et ${hasMeaningfulFlashFacts ? 'des infos flash a été ajouté' : 'aucune info flash pertinente n\'a été générée'} à la bibliothèque.`,
+            description: `"${title.trim()}" avec ${numGeneratedQuestions} question(s) et ${hasValidFlashFacts ? 'des infos flash a été ajouté' : 'aucune info flash pertinente n\'a été générée'} à la bibliothèque.`,
           });
-          // Reset form fields after successful submission
+          
           setFiles(null);
           setTitle("");
-          // Optionally reset numQuestions or keep it for next upload
-          // setNumQuestions("20"); 
           const fileInput = document.getElementById('pdf-upload') as HTMLInputElement;
           if (fileInput) fileInput.value = "";
 
-
         } else {
-          throw new Error('L\'IA n\'a pas réussi à générer de contenu significatif (quiz ou informations flash).');
+          // This case is hit if the flow returns empty quiz and empty flash_facts
+          setGeneratedContentInfo(null);
+          toast({
+            title: 'Aucun Contenu Significatif Généré',
+            description: "L'IA n'a pas pu extraire de quiz valide ou d'informations flash pertinentes de ce(s) document(s) PDF.",
+            variant: 'default', // Changed to default to be less alarming than 'destructive'
+          });
         }
-      } catch (aiError) {
-        console.error('Erreur de traitement IA ou de sauvegarde DB:', aiError);
+      } catch (processingError) { // Catches errors from generateQuizFromPdf or DB insert
+        console.error('Erreur de traitement IA ou de sauvegarde DB:', processingError);
+        setGeneratedContentInfo(null); // Clear any potentially stale info
         toast({
-          title: 'Erreur Génération/Sauvegarde',
-          description: (aiError instanceof Error ? aiError.message : String(aiError)) || 'L\'IA n\'a pas pu traiter le(s) PDF ou une erreur de base de données est survenue.',
+          title: 'Erreur de Traitement',
+          description: (processingError instanceof Error ? processingError.message : String(processingError)) || 'Une erreur est survenue lors de la génération ou de la sauvegarde du contenu.',
           variant: 'destructive',
         });
-      } finally {
-        setIsLoading(false);
       }
-    } catch (e) {
-      console.error('Erreur de lecture de fichier ou de soumission de formulaire:', e);
+    } catch (fileReadingError) { // This catch is for file reading errors before AI processing
+      console.error('Erreur de lecture de fichier ou de soumission de formulaire:', fileReadingError);
+      setGeneratedContentInfo(null);
       toast({
         title: 'Échec du Traitement Initial',
-        description: (e instanceof Error ? e.message : String(e)) || 'Une erreur inattendue s\'est produite lors de la lecture des fichiers.',
+        description: (fileReadingError instanceof Error ? fileReadingError.message : String(fileReadingError)) || 'Une erreur inattendue s\'est produite lors de la lecture des fichiers.',
         variant: 'destructive',
       });
-      setIsLoading(false);
+    } finally {
+        setIsLoading(false);
     }
   };
 
