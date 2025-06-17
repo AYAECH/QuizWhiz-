@@ -105,40 +105,65 @@ const generateQuizFromPdfFlow = ai.defineFlow(
   async (input): Promise<GenerateQuizFromPdfOutput> => {
     const {output: lenientOutput} = await prompt(input); // Genkit performs schema validation here
 
-    if (!lenientOutput || !lenientOutput.quiz) {
-      throw new Error('L\'IA n\'a pas généré de questions de quiz ou a retourné une structure de quiz invalide.');
+    let validQuiz: QuizQuestion[] = [];
+    if (lenientOutput?.quiz && Array.isArray(lenientOutput.quiz)) {
+      validQuiz = lenientOutput.quiz.filter(q =>
+        q.question && typeof q.question === 'string' && q.question.trim() !== '' &&
+        q.options && Array.isArray(q.options) && q.options.length === 4 &&
+        q.options.every(opt => typeof opt === 'string' && opt.trim() !== '') &&
+        q.answer && typeof q.answer === 'string' && q.answer.trim() !== '' &&
+        q.options.includes(q.answer) 
+      ).map(q => ({ 
+          question: q.question!,
+          options: q.options as [string, string, string, string], 
+          answer: q.answer!
+      }));
+    } else if (lenientOutput && !lenientOutput.quiz) {
+        console.warn("L'IA n'a pas retourné de champ 'quiz' dans sa sortie lors de la génération à partir de PDF.");
     }
 
-    const validQuiz: QuizQuestion[] = lenientOutput.quiz.filter(q =>
-      q.question && typeof q.question === 'string' && q.question.trim() !== '' &&
-      q.options && Array.isArray(q.options) && q.options.length === 4 &&
-      q.options.every(opt => typeof opt === 'string' && opt.trim() !== '') &&
-      q.answer && typeof q.answer === 'string' && q.answer.trim() !== '' &&
-      q.options.includes(q.answer) // Ensure the answer is one of the options
-    ).map(q => ({ // Map to the strict QuizQuestion structure, ensuring properties are non-null
-        question: q.question!,
-        options: q.options as [string, string, string, string], // Type assertion after length check
-        answer: q.answer!
-    }));
-
-    if (validQuiz.length === 0) {
-        console.warn('Données brutes de l\'IA pour le quiz:', JSON.stringify(lenientOutput.quiz, null, 2));
-        throw new Error("L'IA n'a pas généré de questions de quiz valides après filtrage. Vérifiez les logs pour les données brutes.");
+    let finalFlashFacts: string[] | undefined = undefined;
+    if (lenientOutput?.flashFacts && Array.isArray(lenientOutput.flashFacts) && lenientOutput.flashFacts.length > 0) {
+        const filteredFlashFacts = lenientOutput.flashFacts.filter(fact => typeof fact === 'string' && fact.trim() !== "" && !fact.toLowerCase().includes("aucune information flash spécifique"));
+        if (filteredFlashFacts.length > 0) {
+            finalFlashFacts = filteredFlashFacts;
+        } else {
+             console.warn('Les informations flash générées par l\'IA (PDF) étaient vides ou non significatives après filtrage.');
+        }
+    } else if (lenientOutput && !lenientOutput.flashFacts) {
+        console.warn("L'IA n'a pas retourné de champ 'flashFacts' dans sa sortie (PDF), ou il était vide.");
     }
     
-    if (validQuiz.length < input.numQuestions * 0.8) { // If less than 80% of requested questions are valid
-        console.warn(`L'IA n'a généré que ${validQuiz.length} questions valides sur les ${input.numQuestions} demandées. Certaines questions ont pu être filtrées en raison d'une structure incorrecte. Cela peut indiquer un problème avec le contenu du PDF ou la capacité de l'IA à le structurer.`);
+    if (validQuiz.length === 0 && (!finalFlashFacts || finalFlashFacts.length === 0)) {
+      if (lenientOutput?.quiz) {
+        console.warn('Données brutes de l\'IA pour le quiz PDF (filtrées et invalides):', JSON.stringify(lenientOutput.quiz, null, 2));
+      } else {
+        console.warn('Aucune donnée de quiz PDF brute fournie par l\'IA ou structure invalide.');
+      }
+      if (lenientOutput?.flashFacts) {
+        console.warn('Données brutes de l\'IA pour les flash facts PDF (filtrées et invalides/vides):', JSON.stringify(lenientOutput.flashFacts, null, 2));
+      } else {
+        console.warn('Aucune donnée de flash facts PDF brute fournie par l\'IA ou structure invalide.');
+      }
+      throw new Error("L'IA n'a pas réussi à générer de contenu significatif (ni quiz valides, ni informations flash pertinentes) à partir du/des PDF.");
     }
     
-    let finalFlashFacts = lenientOutput.flashFacts;
-    if (!finalFlashFacts || finalFlashFacts.length === 0 || finalFlashFacts.every(fact => fact.trim() === "" || fact.toLowerCase().includes("aucune information flash spécifique"))) {
-        console.warn('L\'IA n\'a pas généré d\'informations flash significatives.');
-        finalFlashFacts = undefined; 
+    if (validQuiz.length === 0 && finalFlashFacts && finalFlashFacts.length > 0) {
+      console.warn("Aucune question de quiz valide n'a été générée à partir du PDF, mais des informations flash ont été extraites. Nombre de PDF traités : " + input.pdfDataUris.length);
+      if (lenientOutput?.quiz && lenientOutput.quiz.length > 0) { 
+          console.warn('Données brutes des questions de quiz PDF (tentées mais toutes invalides):', JSON.stringify(lenientOutput.quiz, null, 2));
+      }
+    } else if (validQuiz.length > 0 && validQuiz.length < input.numQuestions * 0.8) { 
+      console.warn(`L'IA n'a généré que ${validQuiz.length} questions valides sur les ${input.numQuestions} demandées à partir du PDF. Nombre de PDF traités : ${input.pdfDataUris.length}. Cela peut indiquer un problème avec le contenu du PDF ou la capacité de l'IA à le structurer.`);
+    }
+    
+    if (validQuiz.length > 0 && (!finalFlashFacts || finalFlashFacts.length === 0)) {
+        console.warn("Des questions de quiz valides ont été générées à partir du PDF, mais aucune information flash significative. Nombre de PDF traités : " + input.pdfDataUris.length);
     }
 
     return {
-        quiz: validQuiz,
-        flashFacts: finalFlashFacts
+      quiz: validQuiz, 
+      flashFacts: finalFlashFacts, 
     };
   }
 );
