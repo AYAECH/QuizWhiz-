@@ -26,6 +26,7 @@ const generalKnowledgeTopics = [
   { value: "ANCFCC", label: "ANCFCC (Conservation Foncière Maroc)" },
   { value: "Agriculture au Maroc", label: "Agriculture au Maroc" },
   { value: "Économie du Maroc", label: "Économie du Maroc" },
+  { value: "Mélange de sujets de culture générale (Maroc et International)", label: "Mélange Aléatoire (Tous Sujets)" },
 ];
 
 export default function HomePage() {
@@ -88,7 +89,7 @@ export default function HomePage() {
         flashFacts: result.flashFacts || [] 
       };
       localStorage.setItem(ACTIVE_QUIZ_DATA_KEY, JSON.stringify(quizDataToStore));
-      toast({ title: 'Quiz de Culture Générale Prêt !', description: `Quiz sur "${selectedGkQuizTopic}" généré.` });
+      toast({ title: 'Quiz de Culture Générale Prêt !', description: `Quiz sur "${generalKnowledgeTopics.find(t => t.value === selectedGkQuizTopic)?.label || selectedGkQuizTopic}" généré.` });
       router.push('/quiz/start');
     } catch (error) {
       console.error('Erreur lors de la génération du quiz de culture générale:', error);
@@ -115,23 +116,13 @@ export default function HomePage() {
     setIsGeneratingGkFlashFacts(true);
     try {
       const result: GeneralKnowledgeFlashFactsOutput = await generateGeneralKnowledgeFlashFacts({ topic: selectedGkFlashFactsTopic });
-      const currentDataJson = localStorage.getItem(ACTIVE_QUIZ_DATA_KEY);
-      let currentData: GeneratedQuiz = { quiz: [], flashFacts: [] };
-      if (currentDataJson) {
-        try {
-            currentData = JSON.parse(currentDataJson);
-        } catch { /* ignore malformed data */ }
-      }
       
-      // Prioritize newly generated flash facts, keep existing quiz questions if any.
-      // Or decide to clear quiz questions if flash facts are for a new topic.
-      // For simplicity now, we'll create a new structure primarily for these flash facts.
       const dataToStore: GeneratedQuiz = {
-        quiz: [], // GK Flash facts generation doesn't include a quiz by default.
+        quiz: [], 
         flashFacts: result.flashFacts || []
       };
       localStorage.setItem(ACTIVE_QUIZ_DATA_KEY, JSON.stringify(dataToStore));
-      toast({ title: 'Infos Flash Prêtes !', description: `Infos flash sur "${selectedGkFlashFactsTopic}" générées.` });
+      toast({ title: 'Infos Flash Prêtes !', description: `Infos flash sur "${generalKnowledgeTopics.find(t => t.value === selectedGkFlashFactsTopic)?.label || selectedGkFlashFactsTopic}" générées.` });
       router.push('/flash-info');
     } catch (error) {
       console.error('Erreur lors de la génération des infos flash de culture générale:', error);
@@ -156,7 +147,7 @@ export default function HomePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-4xl">
-        {/* Quiz basé sur PDF (existant) */}
+        
         <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader>
             <BookOpenCheck className="h-12 w-12 text-primary mb-2" />
@@ -183,7 +174,7 @@ export default function HomePage() {
           </CardFooter>
         </Card>
 
-        {/* Infos Flash sur PDF (existant) */}
+        
         <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader>
             <Lightbulb className="h-12 w-12 text-primary mb-2" />
@@ -210,7 +201,7 @@ export default function HomePage() {
           </CardFooter>
         </Card>
 
-        {/* Nouvelle Carte: Générer Quiz Culture Générale */}
+        
         <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader>
             <Brain className="h-12 w-12 text-accent-foreground mb-2" />
@@ -261,7 +252,7 @@ export default function HomePage() {
           </CardFooter>
         </Card>
 
-        {/* Nouvelle Carte: Infos Flash Culture Générale */}
+        
         <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader>
             <Sparkles className="h-12 w-12 text-accent-foreground mb-2" />

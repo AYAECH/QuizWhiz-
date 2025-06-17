@@ -12,7 +12,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GeneralKnowledgeQuizInputSchema = z.object({
-  topic: z.string().describe('Le sujet de culture générale pour le quiz, en français.'),
+  topic: z.string().describe('Le sujet de culture générale pour le quiz, en français. Peut être un sujet spécifique ou "Mélange de sujets de culture générale (Maroc et International)" pour un quiz varié.'),
   numQuestions: z.number().int().min(5).max(50).describe('Le nombre souhaité de questions pour le quiz (entre 5 et 50).'),
 });
 export type GeneralKnowledgeQuizInput = z.infer<typeof GeneralKnowledgeQuizInputSchema>;
@@ -42,11 +42,15 @@ const prompt = ai.definePrompt({
   output: {schema: GeneralKnowledgeQuizOutputSchema},
   prompt: `Vous êtes un expert en création de contenu éducatif et de quiz EN FRANÇAIS.
 Votre tâche est de générer un quiz à choix multiples sur le sujet de culture générale suivant : {{{topic}}}.
+
+Si le sujet est "Mélange de sujets de culture générale (Maroc et International)", générez des questions variées couvrant plusieurs domaines tels que le football (général et marocain si pertinent), l'actualité marocaine récente, la finance et la banque au Maroc, l'ANCFCC (Agence Nationale de la Conservation Foncière, du Cadastre et de la Cartographie), l'agriculture au Maroc, et l'économie du Maroc, ainsi que d'autres thèmes de culture générale pertinents. Assurez une bonne répartition et diversité des sujets pour un quiz équilibré.
+Sinon, si le sujet a une connotation marocaine explicite (par exemple, "Actualité Marocaine", "Finance du Maroc", "ANCFCC", "Agriculture Maroc", "Économie Maroc"), concentrez impérativement les questions et les réponses sur le contexte marocain.
+Pour des sujets plus généraux comme "Football" (lorsqu'il n'est pas dans le cadre du "Mélange de sujets"), maintenez une perspective de culture générale large, mais n'hésitez pas à inclure des questions relatives au football marocain si cela diversifie le quiz.
+
 Générez exactement {{{numQuestions}}} questions.
 Chaque question doit avoir 4 options de réponse distinctes et plausibles.
 Une seule option doit être la bonne réponse.
 Assurez-vous que les questions soient claires, bien formulées, originales et pertinentes pour le sujet donné. Évitez les questions trop triviales ou trop obscures.
-Si le sujet a une connotation marocaine explicite (par exemple, "Actualité Marocaine", "Finance du Maroc", "ANCFCC", "Agriculture Maroc", "Économie Maroc"), concentrez impérativement les questions et les réponses sur le contexte marocain. Pour des sujets plus généraux comme "Football", maintenez une perspective de culture générale large, mais n'hésitez pas à inclure des questions relatives au football marocain si cela diversifie le quiz.
 L'intégralité du contenu (questions, options, réponses) doit être EN FRANÇAIS.
 Optionnel : Vous pouvez également générer 2-3 "flashFacts" (faits saillants concis et intéressants) en français relatifs au sujet {{{topic}}}. Ces flashFacts ne doivent pas répéter les questions/réponses du quiz.`,
 });

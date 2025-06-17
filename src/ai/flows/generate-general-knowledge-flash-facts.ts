@@ -12,7 +12,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GeneralKnowledgeFlashFactsInputSchema = z.object({
-  topic: z.string().describe('Le sujet de culture générale pour les informations flash, en français.'),
+  topic: z.string().describe('Le sujet de culture générale pour les informations flash, en français. Peut être un sujet spécifique ou "Mélange de sujets de culture générale (Maroc et International)" pour des infos variées.'),
 });
 export type GeneralKnowledgeFlashFactsInput = z.infer<typeof GeneralKnowledgeFlashFactsInputSchema>;
 
@@ -31,8 +31,12 @@ const prompt = ai.definePrompt({
   output: {schema: GeneralKnowledgeFlashFactsOutputSchema},
   prompt: `Vous êtes un expert en création de contenu éducatif concis et pertinent EN FRANÇAIS.
 Votre tâche est de générer une liste d'informations flash (faits saillants, points clés, phrases percutantes) sur le sujet de culture générale suivant : {{{topic}}}.
+
+Si le sujet est "Mélange de sujets de culture générale (Maroc et International)", générez des informations flash variées couvrant plusieurs domaines tels que le football (général et marocain si pertinent), l'actualité marocaine récente, la finance et la banque au Maroc, l'ANCFCC (Agence Nationale de la Conservation Foncière, du Cadastre et de la Cartographie), l'agriculture au Maroc, et l'économie du Maroc, ainsi que d'autres thèmes de culture générale pertinents. Assurez une bonne répartition, diversité des sujets et pertinence pour un apprentissage rapide. Mettez l'accent sur le contexte marocain lorsque cela est approprié pour les sujets spécifiques.
+Sinon, si le sujet a une connotation marocaine explicite (par exemple, "Actualité Marocaine", "Finance du Maroc", "ANCFCC", "Agriculture Maroc", "Économie Maroc"), concentrez impérativement les informations sur le contexte marocain.
+Pour des sujets plus généraux comme "Football" (lorsqu'il n'est pas dans le cadre du "Mélange de sujets"), maintenez une perspective de culture générale large tout en incluant, si possible, un fait pertinent pour le Maroc si cela semble naturel.
+
 Produisez environ 3 à 5 informations flash. Chaque information doit être une phrase distincte, claire et informative.
-Si le sujet a une connotation marocaine explicite (par exemple, "Actualité Marocaine", "Finance du Maroc", "ANCFCC", "Agriculture Maroc", "Économie Maroc"), concentrez impérativement les informations sur le contexte marocain. Pour des sujets plus généraux comme "Football", maintenez une perspective de culture générale large tout en incluant, si possible, un fait pertinent pour le Maroc si cela semble naturel.
 L'intégralité du contenu généré DOIT être EN FRANÇAIS.
 Le format de sortie doit être JSON avec un champ 'flashFacts' contenant un tableau de chaînes de caractères.`,
 });
