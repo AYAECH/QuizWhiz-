@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -12,8 +13,8 @@ import { Progress } from '@/components/ui/progress';
 import { AlertTriangle, ChevronLeft, ChevronRight, CheckCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const QUIZ_SESSION_KEY = 'quizwhiz_current_quiz_session_data'; // From quiz/start
-const QUIZ_ATTEMPT_RESULTS_KEY = 'quizwhiz_quiz_attempt_results'; // To pass to results page
+const QUIZ_SESSION_KEY = 'quizwhiz_current_quiz_session_data'; 
+const QUIZ_ATTEMPT_RESULTS_KEY = 'quizwhiz_quiz_attempt_results'; 
 
 export function QuizClientPage() {
   const router = useRouter();
@@ -28,7 +29,7 @@ export function QuizClientPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (userLoading) return; // Wait for user check
+    if (userLoading) return; 
 
     if (!user) {
       toast({ title: 'Not Logged In', description: 'Please log in to take a quiz.', variant: 'destructive'});
@@ -59,6 +60,14 @@ export function QuizClientPage() {
     setIsLoading(false);
   }, [user, userLoading, router, toast]);
 
+  useEffect(() => {
+    // When question index changes, load the answer for the new current question if it exists
+    if (quizData) {
+        setSelectedOption(userAnswers[currentQuestionIndex] || undefined);
+    }
+  }, [currentQuestionIndex, quizData, userAnswers]);
+
+
   const currentQuestion: QuizQuestion | undefined = quizData?.quiz[currentQuestionIndex];
 
   const handleOptionSelect = (option: string) => {
@@ -69,8 +78,6 @@ export function QuizClientPage() {
     if (selectedOption && currentQuestion) {
       setUserAnswers(prev => ({ ...prev, [currentQuestionIndex]: selectedOption }));
     } else if (!currentQuestion?.options.includes(userAnswers[currentQuestionIndex])) {
-        // if no new selection, but there was a previous answer for this question, keep it
-        // if no option selected and no previous answer, show toast.
          toast({ title: 'No Answer Selected', description: 'Please select an answer before proceeding.', variant: 'destructive' });
          return;
     }
@@ -78,23 +85,22 @@ export function QuizClientPage() {
 
     if (currentQuestionIndex < (quizData?.quiz.length || 0) - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
-      setSelectedOption(userAnswers[currentQuestionIndex + 1] || undefined); // Load next question's previous answer if exists
+      // setSelectedOption will be updated by the useEffect watching currentQuestionIndex
     }
   };
 
   const handlePrevious = () => {
-    if (selectedOption && currentQuestion) { // Save current selection if any before going back
+    if (selectedOption && currentQuestion) { 
       setUserAnswers(prev => ({ ...prev, [currentQuestionIndex]: selectedOption }));
     }
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
-      setSelectedOption(userAnswers[currentQuestionIndex - 1] || undefined); // Load previous question's answer
+      // setSelectedOption will be updated by the useEffect watching currentQuestionIndex
     }
   };
 
   const handleSubmitQuiz = () => {
     setIsSubmitting(true);
-    // Ensure the last question's answer is saved if selected
     let finalAnswers = userAnswers;
     if (selectedOption && currentQuestion) {
       finalAnswers = { ...userAnswers, [currentQuestionIndex]: selectedOption };
@@ -112,7 +118,6 @@ export function QuizClientPage() {
         return;
     }
 
-    // Calculate score
     let score = 0;
     quizData.quiz.forEach((q, index) => {
       if (finalAnswers[index] === q.answer) {
@@ -125,11 +130,10 @@ export function QuizClientPage() {
       userAnswers: finalAnswers,
       score,
       totalQuestions: quizData.quiz.length,
-      // pdfUriUsed: localStorage.getItem('quizwhiz_active_pdf_uri') || undefined // Removed
     };
 
     localStorage.setItem(QUIZ_ATTEMPT_RESULTS_KEY, JSON.stringify(attemptData));
-    localStorage.removeItem(QUIZ_SESSION_KEY); // Clean up session data
+    localStorage.removeItem(QUIZ_SESSION_KEY); 
 
     toast({ title: 'Quiz Submitted!', description: 'Redirecting to results...', className: 'bg-accent text-accent-foreground' });
     router.push('/quiz/results');
@@ -149,7 +153,7 @@ export function QuizClientPage() {
       <Card className="w-full max-w-lg mx-auto mt-10 text-center shadow-lg">
         <CardHeader>
           <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-2" />
-          <CardTitle className="font-headline">Quiz Loading Error</CardTitle>
+          <CardTitle>Quiz Loading Error</CardTitle> {/* font-headline applied via CardTitle component */}
         </CardHeader>
         <CardContent>
           <p>Could not load the quiz questions. Please try returning to the start.</p>
@@ -167,11 +171,11 @@ export function QuizClientPage() {
     <div className="flex flex-col items-center w-full">
       <Card className="w-full max-w-2xl shadow-2xl">
         <CardHeader>
-          <CardTitle className="text-2xl font-headline text-primary text-center">
+          <CardTitle className="text-2xl text-primary text-center"> {/* font-headline applied via CardTitle component */}
             Question {currentQuestionIndex + 1} of {quizData.quiz.length}
           </CardTitle>
           <Progress value={progress} className="w-full mt-2 h-3" aria-label={`${progress.toFixed(0)}% complete`} />
-          <CardDescription className="text-lg text-center pt-4 min-h-[60px]">
+          <CardDescription className="text-lg text-center pt-4 min-h-[60px] font-medium text-foreground">
             {currentQuestion.question}
           </CardDescription>
         </CardHeader>

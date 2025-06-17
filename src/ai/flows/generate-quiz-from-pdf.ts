@@ -1,6 +1,7 @@
+
 'use server';
 /**
- * @fileOverview Generates a multiple-choice quiz from a PDF document.
+ * @fileOverview Generates a multiple-choice quiz from one or more PDF documents.
  *
  * - generateQuizFromPdf - A function that handles the quiz generation process.
  * - GenerateQuizFromPdfInput - The input type for the generateQuizFromPdf function.
@@ -11,11 +12,12 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateQuizFromPdfInputSchema = z.object({
-  pdfDataUri: z
+  pdfDataUris: z.array(z
     .string()
     .describe(
       "A PDF document, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-    ),
+    )).describe('An array of PDF documents as data URIs.'),
+  numQuestions: z.number().int().min(5).max(50).describe("The desired number of questions to generate, between 5 and 50."),
 });
 export type GenerateQuizFromPdfInput = z.infer<typeof GenerateQuizFromPdfInputSchema>;
 
@@ -31,6 +33,12 @@ const GenerateQuizFromPdfOutputSchema = z.object({
 export type GenerateQuizFromPdfOutput = z.infer<typeof GenerateQuizFromPdfOutputSchema>;
 
 export async function generateQuizFromPdf(input: GenerateQuizFromPdfInput): Promise<GenerateQuizFromPdfOutput> {
+  if (!input.pdfDataUris || input.pdfDataUris.length === 0) {
+    throw new Error('No PDF documents provided.');
+  }
+  if (input.numQuestions < 5 || input.numQuestions > 50) {
+    throw new Error('Number of questions must be between 5 and 50.');
+  }
   return generateQuizFromPdfFlow(input);
 }
 
@@ -38,18 +46,27 @@ const prompt = ai.definePrompt({
   name: 'generateQuizFromPdfPrompt',
   input: {schema: GenerateQuizFromPdfInputSchema},
   output: {schema: GenerateQuizFromPdfOutputSchema},
-  prompt: `You are a quiz generator that extracts questions and answers from PDF documents.
+  prompt: `You are a quiz generator.
+Your task is to analyze the content from ALL the provided PDF documents and generate exactly {{{numQuestions}}} multiple-choice quiz questions.
+Each question must have 4 distinct answer options, with only one correct answer.
+Ensure the questions cover diverse topics from the documents and are well-distributed.
+The output should be a JSON array of questions, where each question has the following format:
+{
+  "question": "The question text",
+  "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+  "answer": "The correct answer text, which must be one of the options"
+}
 
-  Analyze the content of the following PDF document and generate a multiple-choice quiz with 20-30 questions.
-  Each question should have 4 answer options, with one correct answer.
-  The output should be a JSON array of questions, where each question has the following format:
-  {
-    "question": "The question text",
-    "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-    "answer": "The correct answer"
-  }
-
-  PDF Document: {{media url=pdfDataUri}}
+{{#if pdfDataUris}}
+Here are the PDF documents:
+{{#each pdfDataUris}}
+Document Content:
+{{media url=this}}
+--- End of Document Content ---
+{{/each}}
+{{else}}
+Error: No PDF documents were provided in the input. Cannot generate quiz.
+{{/if}}
   `,
 });
 
@@ -61,6 +78,15 @@ const generateQuizFromPdfFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
+    if (!output || !output.quiz || output.quiz.length === 0) {
+      throw new Error('AI failed to generate quiz questions or returned an empty quiz.');
+    }
+    // Ensure the number of questions is close to requested, models might not be exact
+    // but this provides a basic check.
+    if (output.quiz.length < Math.max(1, input.numQuestions / 2)) {
+        console.warn(`AI generated only ${output.quiz.length} questions, less than half of the requested ${input.numQuestions}.`);
+    }
     return output!;
   }
 );
+

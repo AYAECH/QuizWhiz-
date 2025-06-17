@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -37,7 +38,7 @@ export default function HomePage() {
         <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader>
             <BookOpenCheck className="h-12 w-12 text-primary mb-2" />
-            <CardTitle className="font-headline">Start a Quiz</CardTitle>
+            <CardTitle>Start a Quiz</CardTitle> {/* font-headline applied via CardTitle component */}
             <CardDescription>Ready to test your knowledge? Begin a new quiz session.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -63,7 +64,7 @@ export default function HomePage() {
         <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader>
             <UploadCloud className="h-12 w-12 text-primary mb-2" />
-            <CardTitle className="font-headline">Admin: Upload Document</CardTitle>
+            <CardTitle>Admin: Upload Document</CardTitle> {/* font-headline applied via CardTitle component */}
             <CardDescription>Administrators can upload PDF documents to generate new quizzes.</CardDescription>
           </CardHeader>
            <CardContent>
@@ -81,7 +82,7 @@ export default function HomePage() {
         <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader>
             <Bell className="h-12 w-12 text-primary mb-2" />
-            <CardTitle className="font-headline">Notifications</CardTitle>
+            <CardTitle>Notifications</CardTitle> {/* font-headline applied via CardTitle component */}
             <CardDescription>Stay updated with the latest news, instructions, and reminders.</CardDescription>
           </CardHeader>
            <CardContent>

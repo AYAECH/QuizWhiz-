@@ -1,3 +1,4 @@
+
 import { PdfUploadForm } from '@/components/admin/PdfUploadForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShieldCheck } from 'lucide-react';
@@ -10,9 +11,9 @@ export default function AdminUploadPage() {
           <div className="mx-auto bg-primary/10 text-primary rounded-full p-3 w-fit mb-2">
             <ShieldCheck className="h-10 w-10" />
           </div>
-          <CardTitle className="text-3xl font-headline">Admin: Upload Document</CardTitle>
+          <CardTitle className="text-3xl">Admin: Upload Document</CardTitle> {/* font-headline applied via CardTitle component */}
           <CardDescription>
-            Upload a PDF document to automatically generate a new quiz. This will replace any existing active quiz.
+            Upload PDF document(s) to automatically generate a new quiz. This will replace any existing active quiz.
           </CardDescription>
         </CardHeader>
         <CardContent>
