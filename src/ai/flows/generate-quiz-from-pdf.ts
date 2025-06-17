@@ -52,7 +52,7 @@ export async function generateQuizFromPdf(input: GenerateQuizFromPdfInput): Prom
   if (!input.pdfDataUris || input.pdfDataUris.length === 0) {
     throw new Error('Aucun document PDF fourni.');
   }
-  if (input.numQuestions < 5 || input.numQuestions > 2000) { // Corrected max limit
+  if (input.numQuestions < 5 || input.numQuestions > 2000) {
     throw new Error('Le nombre de questions doit être compris entre 5 et 2000.');
   }
   return generateQuizFromPdfFlow(input);
@@ -68,7 +68,7 @@ En fonction de cette analyse, vous produirez une sortie JSON avec deux champs pr
 1.  **Génération de Quiz (champ 'quiz') :**
     *   Générez environ {{{numQuestions}}} questions de quiz à choix multiples, EN FRANÇAIS. Essayez de vous approcher de ce nombre.
     *   **IMPORTANT : Chaque objet question dans le tableau 'quiz' DOIT impérativement contenir les trois champs suivants : 'question' (une chaîne de caractères non vide), 'options' (un tableau de EXACTEMENT 4 chaînes de caractères non vides et distinctes), et 'answer' (une chaîne de caractères non vide, qui doit être l'une des 4 options). Ne pas omettre AUCUN de ces champs pour AUCUNE question. Assurez-vous que le JSON est valide et complet pour chaque question.**
-    *   Si, après une analyse approfondie, aucune question de quiz pertinente et **entièrement conforme aux exigences ci-dessus** ne peut être extraite du document, retournez **impérativement un tableau vide** pour le champ 'quiz'.
+    *   Si, après une analyse approfondie, aucune question de quiz pertinente et **entièrement conforme aux exigences ci-dessus** ne peut être extraite du document, retournez **impérativement un tableau vide** pour le champ 'quiz'. Autrement, si des questions sont générées, assurez-vous que chaque objet question respecte la structure {question: string, options: string[4], answer: string}.
     *   Il est crucial que chaque quiz que vous générez soit significativement différent de tout quiz précédent, même s'il est basé sur les mêmes documents. Visez l'originalité dans la formulation des questions, la sélection des sujets et la construction des distracteurs (options incorrectes). Assurez-vous que les questions ne sont pas trop similaires entre elles au sein d'un même quiz.
     *   Chaque question doit avoir EXACTEMENT 4 options de réponse distinctes et plausibles, EN FRANÇAIS. Toutes les options doivent être des chaînes de caractères non vides.
     *   Une seule option peut être la bonne réponse.
@@ -78,12 +78,13 @@ En fonction de cette analyse, vous produirez une sortie JSON avec deux champs pr
     *   La réponse correcte doit être directement et clairement vérifiable à partir du contenu du document fourni et être l'une des 4 options proposées.
 
 2.  **Génération d'Informations Flash (champ 'flashFacts') :**
-    *   Produisez une LISTE (un tableau JavaScript) de faits saillants, de points clés ou d'extraits intéressants et CONCIS issus de TOUS les documents fournis. Ces informations sont destinées à un apprentissage rapide ("flash").
+    *   Produisez une LISTE (un tableau JavaScript de chaînes de caractères) de faits saillants, de points clés ou d'extraits intéressants et CONCIS issus de TOUS les documents fournis. Ces informations sont destinées à un apprentissage rapide ("flash").
     *   Chaque élément de la liste doit être une phrase courte, percutante, et non vide, EN FRANÇAIS.
     *   Le champ 'flashFacts' dans la sortie JSON doit être un tableau de chaînes de caractères. VISEZ À EXTRAIRE DES INFORMATIONS UTILES ET PERTINENTES.
-    *   Si, après une analyse approfondie, aucun fait flash adapté, **non vide et pertinent** (différent de phrases génériques comme "Aucune information spécifique..."), ne peut être extrait, retournez **impérativement un tableau vide** pour 'flashFacts'.
+    *   Si, après une analyse approfondie, aucun fait flash adapté, **non vide et pertinent** (différent de phrases génériques comme "Aucune information spécifique..." ou "Aucun fait flash adapté..."), ne peut être extrait, retournez **impérativement un tableau vide** pour 'flashFacts'. Autrement, si des faits sont générés, assurez-vous que 'flashFacts' est un tableau de chaînes.
 
 Le format de sortie doit être JSON. L'intégralité du contenu textuel (questions, options, réponses, flashFacts) doit être EN FRANÇAIS.
+ASSUREZ-VOUS QUE LA SORTIE GLOBALE EST UN OBJET JSON VALIDE CONTENANT LES CLÉS 'quiz' (un tableau d'objets question ou un tableau vide) ET 'flashFacts' (un tableau de chaînes de caractères ou un tableau vide).
 
 {{#if pdfDataUris}}
 Voici les documents PDF :
@@ -105,7 +106,7 @@ const generateQuizFromPdfFlow = ai.defineFlow(
     outputSchema: GenerateQuizFromPdfOutputSchema, // Flow declares the strict output schema
   },
   async (input): Promise<GenerateQuizFromPdfOutput> => {
-    const {output: lenientOutput} = await prompt(input); // Genkit performs schema validation here
+    const {output: lenientOutput} = await prompt(input); // Genkit performs schema validation here (lenient)
 
     let validQuiz: QuizQuestion[] = [];
     if (lenientOutput?.quiz && Array.isArray(lenientOutput.quiz)) {
@@ -155,7 +156,7 @@ const generateQuizFromPdfFlow = ai.defineFlow(
       if (lenientOutput?.quiz && lenientOutput.quiz.length > 0) { 
           console.warn('Données brutes des questions de quiz PDF (tentées mais toutes invalides):', JSON.stringify(lenientOutput.quiz, null, 2));
       }
-    } else if (validQuiz.length > 0 && validQuiz.length < input.numQuestions * 0.5) { // Adjusted threshold to 50%
+    } else if (validQuiz.length > 0 && validQuiz.length < input.numQuestions * 0.5) { 
       console.warn(`L'IA n'a généré que ${validQuiz.length} questions valides sur les ${input.numQuestions} demandées à partir du PDF. Nombre de PDF traités : ${input.pdfDataUris.length}. Cela peut indiquer un problème avec le contenu du PDF ou la capacité de l'IA à le structurer.`);
     }
     
@@ -169,4 +170,3 @@ const generateQuizFromPdfFlow = ai.defineFlow(
     };
   }
 );
-
