@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Generates a multiple-choice quiz from one or more PDF documents.
@@ -46,16 +45,21 @@ const prompt = ai.definePrompt({
   name: 'generateQuizFromPdfPrompt',
   input: {schema: GenerateQuizFromPdfInputSchema},
   output: {schema: GenerateQuizFromPdfOutputSchema},
-  prompt: `You are a quiz generator.
-Your task is to analyze the content from ALL the provided PDF documents and generate exactly {{{numQuestions}}} multiple-choice quiz questions.
-Each question must have 4 distinct answer options, with only one correct answer.
-Ensure the questions cover diverse topics from the documents and are well-distributed.
-The output should be a JSON array of questions, where each question has the following format:
-{
-  "question": "The question text",
-  "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-  "answer": "The correct answer text, which must be one of the options"
-}
+  prompt: `You are an expert quiz generator tasked with creating high-quality, unique quizzes.
+Your task is to meticulously analyze the content from ALL the provided PDF documents and generate exactly {{{numQuestions}}} multiple-choice quiz questions.
+
+It is crucial that each quiz you generate is significantly different from any previous one, even if based on the same documents. Strive for originality in question formulation, topic selection, and the construction of distractors. Make sure the questions are not too similar to each other within the same quiz.
+
+For each quiz:
+1.  Generate exactly {{{numQuestions}}} questions.
+2.  Each question must have 4 distinct answer options.
+3.  Only one option can be the correct answer.
+4.  Ensure questions cover a wide and diverse range of topics from the documents. Avoid concentrating on a single section or repeating concepts excessively.
+5.  The questions themselves should be distinct from one another within the same quiz.
+6.  Phrase questions clearly and unambiguously.
+7.  The correct answer must be directly and clearly verifiable from the provided document content.
+
+Output format must be JSON.
 
 {{#if pdfDataUris}}
 Here are the PDF documents:
@@ -89,4 +93,3 @@ const generateQuizFromPdfFlow = ai.defineFlow(
     return output!;
   }
 );
-
