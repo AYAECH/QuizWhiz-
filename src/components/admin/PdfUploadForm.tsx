@@ -9,12 +9,15 @@ import { useToast } from '@/hooks/use-toast';
 import { generateQuizFromPdf, type GenerateQuizFromPdfOutput } from '@/ai/flows/generate-quiz-from-pdf';
 import { Loader2, UploadCloud, FileText, AlertTriangle, ListPlus, FileArchive, Info, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { supabase } from '@/lib/supabaseClient';
+import type { QuizQuestion } from '@/types';
 
-const QUIZ_DATA_STORAGE_KEY = 'quizwhiz_active_quiz_data';
+// La clé localStorage QUIZ_DATA_STORAGE_KEY n'est plus utilisée ici pour stocker le contenu PDF.
+// Elle sera utilisée par la page d'accueil pour charger le contenu actif (PDF ou Culture G) avant de démarrer un quiz/flash info.
 
 export function PdfUploadForm() {
   const [files, setFiles] = useState<File[] | null>(null);
-  const [numQuestions, setNumQuestions] = useState<string>("20");
+  const [numQuestions, setNumQuestions] = useState<string>("20"); // Max 1000 dans le flux
   const [isLoading, setIsLoading] = useState(false);
   const [generatedContentInfo, setGeneratedContentInfo] = useState<{ title: string; questions: number; hasFlashFacts: boolean } | null>(null);
   const { toast } = useToast();
@@ -31,7 +34,7 @@ export function PdfUploadForm() {
           variant: 'destructive',
         });
         setFiles(null);
-        event.target.value = ''; 
+        if (event.target) event.target.value = ''; 
         return;
       }
       setFiles(selectedFiles);
@@ -69,6 +72,12 @@ export function PdfUploadForm() {
     setIsLoading(true);
     setGeneratedContentInfo(null);
 
+    if (!supabase) {
+        toast({ title: 'Erreur Supabase', description: 'Client Supabase non initialisé.', variant: 'destructive' });
+        setIsLoading(false);
+        return;
+    }
+
     try {
       const pdfDataUrisPromises = files.map(file => {
         return new Promise<string>((resolve, reject) => {
@@ -80,45 +89,70 @@ export function PdfUploadForm() {
       });
 
       const pdfDataUris = await Promise.all(pdfDataUrisPromises);
+      const fileNamesString = files.map(f => f.name).join(', ');
         
       try {
         const contentOutput: GenerateQuizFromPdfOutput = await generateQuizFromPdf({ pdfDataUris, numQuestions: parsedNumQuestions });
 
-        if (contentOutput && contentOutput.quiz && contentOutput.quiz.length > 0) {
-          localStorage.setItem(QUIZ_DATA_STORAGE_KEY, JSON.stringify(contentOutput)); 
+        if (contentOutput && ( (contentOutput.quiz && contentOutput.quiz.length > 0) || (contentOutput.flashFacts && contentOutput.flashFacts.length > 0) )) {
+          // 1. Désactiver tout contenu PDF actif existant
+          const { error: updateError } = await supabase
+            .from('pdf_generated_content')
+            .update({ is_active: false })
+            .eq('is_active', true);
+
+          if (updateError) {
+            console.error('Erreur lors de la désactivation du contenu PDF existant:', updateError);
+            throw new Error('Impossible de mettre à jour l\'état du contenu existant.');
+          }
+
+          // 2. Insérer le nouveau contenu PDF comme actif
+          const { error: insertError } = await supabase
+            .from('pdf_generated_content')
+            .insert({
+              quiz_data: contentOutput.quiz as QuizQuestion[], // Assurez-vous que le type correspond
+              flash_facts_data: contentOutput.flashFacts,
+              file_names: fileNamesString,
+              is_active: true,
+            });
           
-          const fileNames = files.map(f => f.name).join(', ');
+          if (insertError) {
+            console.error('Erreur lors de l\'insertion du nouveau contenu PDF:', insertError);
+            throw new Error('Impossible de sauvegarder le nouveau contenu généré.');
+          }
+          
           const hasMeaningfulFlashFacts = !!contentOutput.flashFacts && contentOutput.flashFacts.length > 0 && contentOutput.flashFacts.some(fact => fact.trim() !== "" && !fact.toLowerCase().includes("aucune information flash spécifique"));
+          const numGeneratedQuestions = contentOutput.quiz ? contentOutput.quiz.length : 0;
           
           setGeneratedContentInfo({ 
-            title: fileNames, 
-            questions: contentOutput.quiz.length,
+            title: fileNamesString, 
+            questions: numGeneratedQuestions,
             hasFlashFacts: hasMeaningfulFlashFacts
           });
 
           toast({
-            title: 'Contenu Généré avec Succès !',
-            description: `${contentOutput.quiz.length} questions générées. ${hasMeaningfulFlashFacts ? 'Informations flash également générées.' : 'Aucune information flash pertinente n\'a été générée pour ce(s) document(s).'} À partir de ${files.length} document(s).`,
+            title: 'Contenu PDF Enregistré et Actif !',
+            description: `${numGeneratedQuestions} questions et ${hasMeaningfulFlashFacts ? 'des informations flash ont été générées' : 'aucune information flash pertinente n\'a été générée'} à partir de ${files.length} document(s) et sauvegardées.`,
           });
 
         } else {
-          throw new Error('L\'IA n\'a pas réussi à générer des questions de quiz ou a retourné un quiz vide.');
+          throw new Error('L\'IA n\'a pas réussi à générer de contenu significatif (quiz ou informations flash).');
         }
       } catch (aiError) {
-        console.error('Erreur de traitement IA:', aiError);
+        console.error('Erreur de traitement IA ou de sauvegarde DB:', aiError);
         toast({
-          title: 'Erreur lors de la Génération du Contenu',
-          description: (aiError instanceof Error ? aiError.message : String(aiError)) || 'L\'IA n\'a pas pu traiter le(s) PDF. Veuillez essayer d\'autres documents ou vérifier la console.',
+          title: 'Erreur lors de la Génération ou Sauvegarde',
+          description: (aiError instanceof Error ? aiError.message : String(aiError)) || 'L\'IA n\'a pas pu traiter le(s) PDF ou une erreur de base de données est survenue.',
           variant: 'destructive',
         });
-        localStorage.removeItem(QUIZ_DATA_STORAGE_KEY);
+        // Ne pas supprimer la clé localStorage ici, car elle n'est plus gérée par ce composant pour le contenu PDF.
       } finally {
         setIsLoading(false);
       }
     } catch (e) {
       console.error('Erreur de lecture de fichier ou de soumission de formulaire:', e);
       toast({
-        title: 'Échec du Téléchargement',
+        title: 'Échec du Traitement Initial',
         description: (e instanceof Error ? e.message : String(e)) || 'Une erreur inattendue s\'est produite lors de la lecture des fichiers.',
         variant: 'destructive',
       });
@@ -141,26 +175,26 @@ export function PdfUploadForm() {
           disabled={isLoading}
         />
         <p id="file-upload-help" className="text-sm text-muted-foreground">
-          Sélectionnez un ou plusieurs fichiers PDF pour générer un quiz et des informations flash.
+          Sélectionnez un ou plusieurs fichiers PDF. Le contenu généré (quiz et/ou infos flash) remplacera le contenu PDF actif actuel.
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="num-questions" className="text-base">Nombre de Questions</Label>
+        <Label htmlFor="num-questions" className="text-base">Nombre de Questions de Quiz</Label>
         <Input
           id="num-questions"
           type="number"
           value={numQuestions}
           onChange={handleNumQuestionsChange}
           min="5"
-          max="1000"
+          max="1000" // Correspond au max du flow
           step="1"
           className="w-full"
           aria-describedby="num-questions-help"
           disabled={isLoading}
         />
         <p id="num-questions-help" className="text-sm text-muted-foreground">
-          Entrez le nombre de questions souhaité (5-1000).
+          Entrez le nombre de questions de quiz souhaité (5-1000).
         </p>
       </div>
 
@@ -182,7 +216,7 @@ export function PdfUploadForm() {
                 {generatedContentInfo.hasFlashFacts && <Info className="h-8 w-8 text-green-700" />}
                 {!generatedContentInfo.hasFlashFacts && <AlertCircle className="h-8 w-8 text-orange-700" />}
             </div>
-            <p className={`text-sm font-medium ${generatedContentInfo.hasFlashFacts ? 'text-green-700' : 'text-orange-700'}`}>Contenu généré à partir de : {generatedContentInfo.title.length > 50 ? `${generatedContentInfo.title.substring(0,50)}...` : generatedContentInfo.title}</p>
+            <p className={`text-sm font-medium ${generatedContentInfo.hasFlashFacts ? 'text-green-700' : 'text-orange-700'}`}>Contenu généré et sauvegardé à partir de : {generatedContentInfo.title.length > 50 ? `${generatedContentInfo.title.substring(0,50)}...` : generatedContentInfo.title}</p>
             <p className={`text-xs ${generatedContentInfo.hasFlashFacts ? 'text-green-600' : 'text-orange-600'}`}>{generatedContentInfo.questions} questions créées.</p>
             {generatedContentInfo.hasFlashFacts && <p className="text-xs text-green-600">Informations flash également générées.</p>}
             {!generatedContentInfo.hasFlashFacts && <p className="text-xs text-orange-600">Aucune information flash pertinente n'a été générée pour ce(s) document(s).</p>}
@@ -196,7 +230,7 @@ export function PdfUploadForm() {
         ) : (
           <UploadCloud className="mr-2 h-4 w-4" />
         )}
-        {isLoading ? 'Traitement du/des PDF...' : 'Télécharger et Générer le Contenu'}
+        {isLoading ? 'Traitement et Sauvegarde...' : 'Télécharger et Remplacer Contenu Actif'}
       </Button>
       
       <Card className="mt-4 bg-yellow-50 border-yellow-400 text-yellow-700">
@@ -205,7 +239,7 @@ export function PdfUploadForm() {
           <div>
             <p className="text-sm font-semibold">Note Importante :</p>
             <p className="text-xs">
-              La génération de contenu peut prendre quelques instants, surtout pour un grand nombre de questions. Assurez-vous que le contenu du PDF est clair pour de meilleurs résultats. La génération d'informations flash dépend du contenu du document et de l'interprétation de l'IA.
+              La génération et sauvegarde du contenu peut prendre quelques instants. Assurez-vous que le contenu du PDF est clair. Les nouvelles données remplaceront le contenu PDF actif précédent.
             </p>
           </div>
         </CardContent>
