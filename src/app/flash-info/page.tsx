@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useUser } from '@/context/UserContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Loader2, Lightbulb, AlertTriangle, Home, Info } from 'lucide-react';
+import { Loader2, Lightbulb, AlertTriangle, Home, Info as InfoIcon } from 'lucide-react'; // Renamed Info to InfoIcon
 import type { GeneratedQuiz } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -18,6 +18,7 @@ export default function FlashInfoPage() {
   const { user, isLoading: userLoading } = useUser();
   const { toast } = useToast();
   const [flashFacts, setFlashFacts] = useState<string[] | null | undefined>(undefined); 
+  const [sourceTitle, setSourceTitle] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
 
@@ -38,19 +39,21 @@ export default function FlashInfoPage() {
     if (activeQuizJson) {
       try {
         const quizData = JSON.parse(activeQuizJson) as GeneratedQuiz;
+        setSourceTitle(quizData.sourceTitle || "Informations Flash");
         if (quizData && Array.isArray(quizData.flashFacts) && quizData.flashFacts.length > 0 && quizData.flashFacts.some(fact => fact.trim() !== "")) {
           setFlashFacts(quizData.flashFacts.filter(fact => fact.trim() !== ""));
         } else {
-          setFlashFacts(null); // Explicitly set to null if no meaningful flash facts
+          setFlashFacts(null); 
         }
       } catch (error) {
         console.error('Erreur d\'analyse des données pour les infos flash:', error);
         toast({ title: 'Erreur de Chargement des Données', description: 'Impossible d\'analyser le contenu stocké.', variant: 'destructive' });
         setFlashFacts(null);
+        setSourceTitle("Informations Flash");
       }
     } else {
-      setFlashFacts(null); // No active data found
-      // Avoid toast here as user might have landed directly without content generated yet
+      setFlashFacts(null); 
+      setSourceTitle("Informations Flash");
     }
     setIsLoading(false);
   }, [isClient, user, userLoading, router, toast]);
@@ -71,16 +74,16 @@ export default function FlashInfoPage() {
           <div className="mx-auto bg-primary/10 text-primary rounded-full p-3 w-fit mb-3">
             <Lightbulb className="h-10 w-10" />
           </div>
-          <CardTitle className="text-3xl">Informations Flash</CardTitle>
+          <CardTitle className="text-3xl">{sourceTitle || "Informations Flash"}</CardTitle>
           <CardDescription>Aperçus rapides et faits clés (en français).</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 min-h-[150px]">
-          {flashFacts === undefined && ( // Still loading from localStorage effect
+          {flashFacts === undefined && ( 
             <div className="flex justify-center items-center min-h-[100px]">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           )}
-          {flashFacts === null && ( // No flash facts available
+          {flashFacts === null && ( 
             <Card className="bg-yellow-50 border-yellow-400 text-yellow-700">
               <CardContent className="p-4 flex items-start space-x-3">
                 <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
@@ -88,7 +91,7 @@ export default function FlashInfoPage() {
                   <p className="text-sm font-semibold">Aucune Information Flash Disponible</p>
                   <p className="text-xs">
                     Les informations flash n'ont peut-être pas été générées pour le sujet actuel ou aucun contenu n'a encore été traité.
-                    Essayez de <Link href="/" className="underline hover:text-yellow-800">générer des informations flash</Link> depuis la page d'accueil.
+                    Essayez de générer des informations flash depuis la <Link href="/" className="underline hover:text-yellow-800">page d'accueil</Link> ou via la <Link href="/pdf-library" className="underline hover:text-yellow-800">bibliothèque PDF</Link>.
                   </p>
                 </div>
               </CardContent>
@@ -99,7 +102,7 @@ export default function FlashInfoPage() {
               {flashFacts.map((fact, index) => (
                 <Card key={index} className="bg-primary/5 border-primary/20 shadow">
                    <CardContent className="p-3 flex items-start space-x-3">
-                     <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                     <InfoIcon className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                      <p className="text-sm text-primary">{fact}</p>
                    </CardContent>
                 </Card>

@@ -4,10 +4,10 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowRight, BookOpenCheck, Lightbulb, Brain, Sparkles, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowRight, BookOpenCheck, Lightbulb, Brain, Sparkles, Loader2, Library, AlertTriangle } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
 import { useEffect, useState } from 'react';
-import type { GeneratedQuiz, QuizQuestion } from '@/types';
+import type { GeneratedQuiz } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,10 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { generateGeneralKnowledgeQuiz, type GeneralKnowledgeQuizOutput } from '@/ai/flows/generate-general-knowledge-quiz';
 import { generateGeneralKnowledgeFlashFacts, type GeneralKnowledgeFlashFactsOutput } from '@/ai/flows/generate-general-knowledge-flash-facts';
-import { supabase } from '@/lib/supabaseClient';
 
-
-const ACTIVE_QUIZ_DATA_KEY = 'quizwhiz_active_quiz_data'; // Utilisé pour Culture G avant session, et pour PDF avant session (après chargement depuis DB)
+const ACTIVE_QUIZ_DATA_KEY = 'quizwhiz_active_quiz_data'; 
 
 const generalKnowledgeTopics = [
   { value: "Football", label: "Football (Culture Générale)" },
@@ -36,10 +34,6 @@ export default function HomePage() {
   const { toast } = useToast();
   const [isClient, setIsClient] = useState(false);
   
-  // Pour le contenu PDF chargé depuis la base de données
-  const [pdfContentFromDb, setPdfContentFromDb] = useState<GeneratedQuiz | null>(null);
-  const [isLoadingPdfContent, setIsLoadingPdfContent] = useState(true);
-  
   const [selectedGkQuizTopic, setSelectedGkQuizTopic] = useState<string>(generalKnowledgeTopics[0].value);
   const [numGkQuizQuestions, setNumGkQuizQuestions] = useState<string>("10");
   const [isGeneratingGkQuiz, setIsGeneratingGkQuiz] = useState(false);
@@ -51,88 +45,6 @@ export default function HomePage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
-
-  useEffect(() => {
-    const fetchActivePdfContent = async () => {
-      if (!supabase) {
-        console.warn("Supabase client non disponible pour charger le contenu PDF.");
-        setIsLoadingPdfContent(false);
-        setPdfContentFromDb(null);
-        return;
-      }
-      setIsLoadingPdfContent(true);
-      try {
-        const { data, error } = await supabase
-          .from('pdf_generated_content')
-          .select('quiz_data, flash_facts_data')
-          .eq('is_active', true)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (error && error.code !== 'PGRST116') { // PGRST116: 'Fetched result is empty', normal case
-          console.error('Erreur lors du chargement du contenu PDF actif:', error);
-          toast({ title: 'Erreur de chargement PDF', description: 'Impossible de charger le contenu PDF actif depuis la base de données.', variant: 'destructive' });
-          setPdfContentFromDb(null);
-        } else if (data) {
-          setPdfContentFromDb({
-            quiz: (data.quiz_data as QuizQuestion[] | null) || [],
-            flashFacts: (data.flash_facts_data as string[] | null) || [],
-          });
-        } else {
-          setPdfContentFromDb(null); // Aucun contenu PDF actif trouvé
-        }
-      } catch (e) {
-        console.error("Exception lors du chargement du contenu PDF", e);
-        toast({ title: 'Erreur critique chargement PDF', description: 'Une erreur inattendue est survenue.', variant: 'destructive' });
-        setPdfContentFromDb(null);
-      } finally {
-        setIsLoadingPdfContent(false);
-      }
-    };
-
-    if (isClient) {
-      fetchActivePdfContent();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isClient]); // toast a été retiré des dépendances pour éviter des re-fetch inutiles. Le toast est dans le catch.
-
-
-  const canStartPdfQuiz = user && pdfContentFromDb && pdfContentFromDb.quiz && pdfContentFromDb.quiz.length > 0;
-  const canViewPdfFlashInfo = user && pdfContentFromDb && pdfContentFromDb.flashFacts && pdfContentFromDb.flashFacts.length > 0 && pdfContentFromDb.flashFacts.some(fact => fact.trim() !== "");
-
-  const handleStartPdfQuiz = () => {
-    if (!user) {
-      toast({ title: 'Authentification Requise', description: 'Connectez-vous pour démarrer un quiz.', variant: 'destructive' });
-      router.push('/register');
-      return;
-    }
-    if (!pdfContentFromDb || !pdfContentFromDb.quiz || pdfContentFromDb.quiz.length === 0) {
-      toast({ title: 'Aucun Quiz PDF', description: 'Aucun quiz PDF actif trouvé en base de données.', variant: 'destructive' });
-      return;
-    }
-    localStorage.setItem(ACTIVE_QUIZ_DATA_KEY, JSON.stringify(pdfContentFromDb));
-    router.push('/quiz/start');
-  };
-
-  const handleViewPdfFlashInfo = () => {
-    if (!user) {
-      toast({ title: 'Authentification Requise', description: 'Connectez-vous pour voir les infos.', variant: 'destructive' });
-      router.push('/register');
-      return;
-    }
-    if (!pdfContentFromDb || (!pdfContentFromDb.flashFacts || pdfContentFromDb.flashFacts.length === 0 || !pdfContentFromDb.flashFacts.some(fact => fact.trim() !== ""))) {
-       toast({ title: 'Aucune Info Flash PDF', description: 'Aucune info flash PDF active trouvée en base de données.', variant: 'destructive' });
-      return;
-    }
-     const dataForLocalStorage: GeneratedQuiz = {
-      quiz: pdfContentFromDb.quiz || [], 
-      flashFacts: pdfContentFromDb.flashFacts || []
-    };
-    localStorage.setItem(ACTIVE_QUIZ_DATA_KEY, JSON.stringify(dataForLocalStorage));
-    router.push('/flash-info');
-  };
-
 
   const handleGenerateGkQuiz = async () => {
     if (!user) {
@@ -155,7 +67,8 @@ export default function HomePage() {
       const result: GeneralKnowledgeQuizOutput = await generateGeneralKnowledgeQuiz({ topic: selectedGkQuizTopic, numQuestions: numQ });
       const quizDataToStore: GeneratedQuiz = {
         quiz: result.quiz,
-        flashFacts: result.flashFacts || [] 
+        flashFacts: result.flashFacts || [],
+        sourceTitle: `Culture Générale: ${generalKnowledgeTopics.find(t => t.value === selectedGkQuizTopic)?.label || selectedGkQuizTopic}`
       };
       localStorage.setItem(ACTIVE_QUIZ_DATA_KEY, JSON.stringify(quizDataToStore));
       toast({ title: 'Quiz de Culture Générale Prêt !', description: `Quiz sur "${generalKnowledgeTopics.find(t => t.value === selectedGkQuizTopic)?.label || selectedGkQuizTopic}" généré.` });
@@ -188,7 +101,8 @@ export default function HomePage() {
       
       const dataToStore: GeneratedQuiz = {
         quiz: [], 
-        flashFacts: result.flashFacts || []
+        flashFacts: result.flashFacts || [],
+        sourceTitle: `Infos Flash: ${generalKnowledgeTopics.find(t => t.value === selectedGkFlashFactsTopic)?.label || selectedGkFlashFactsTopic}`
       };
       localStorage.setItem(ACTIVE_QUIZ_DATA_KEY, JSON.stringify(dataToStore));
       toast({ title: 'Infos Flash Prêtes !', description: `Infos flash sur "${generalKnowledgeTopics.find(t => t.value === selectedGkFlashFactsTopic)?.label || selectedGkFlashFactsTopic}" générées.` });
@@ -211,89 +125,54 @@ export default function HomePage() {
       <div className="text-center space-y-4">
         <h1 className="text-5xl font-headline font-bold text-primary">Bienvenue sur QuizWhiz!</h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Votre plateforme interactive pour l'apprentissage. Générez des quiz à partir de PDF ou testez vos connaissances générales.
+          Votre plateforme interactive pour l'apprentissage. Explorez la bibliothèque PDF ou testez vos connaissances générales.
         </p>
       </div>
 
-      {/* Section for PDF-based content */}
+      {/* Section for PDF-based content Library */}
       <div className="w-full max-w-4xl space-y-8">
-        <h2 className="text-3xl font-headline font-semibold text-center text-primary">Contenu Actif des Documents PDF</h2>
+        <h2 className="text-3xl font-headline font-semibold text-center text-primary">Contenu des Documents PDF</h2>
         
-        {isLoadingPdfContent && isClient && (
-          <div className="flex justify-center items-center py-10">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="ml-3 text-muted-foreground">Chargement du contenu PDF actif...</p>
-          </div>
-        )}
+        <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <CardHeader className="items-center text-center">
+            <Library className="h-16 w-16 text-primary mb-3" />
+            <CardTitle>Bibliothèque de Quiz PDF</CardTitle>
+            <CardDescription>Accédez à tous les quiz et informations flash générés à partir des documents PDF téléchargés.</CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            {!isClient ? (
+              <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
+            ) : !user ? (
+              <p className="text-sm text-destructive">Veuillez <Link href="/register" className="underline hover:text-destructive/80">vous inscrire ou vous connecter</Link> pour accéder à la bibliothèque.</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">Parcourez les contenus PDF et choisissez un quiz ou des infos flash à réviser.</p>
+            )}
+          </CardContent>
+          <CardFooter>
+            <Button asChild className="w-full" disabled={!isClient || !user}>
+              <Link href="/pdf-library">
+                <ArrowRight className="mr-2 h-4 w-4" />
+                Explorer la Bibliothèque PDF
+              </Link>
+            </Button>
+          </CardFooter>
+        </Card>
 
-        {!isLoadingPdfContent && !pdfContentFromDb && isClient && (
-            <Card className="bg-yellow-50 border-yellow-400 text-yellow-700">
-              <CardContent className="p-4 flex items-start space-x-3">
-                <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold">Aucun Contenu PDF Actif</p>
-                  <p className="text-xs">
-                    Aucun quiz ou information flash généré à partir de PDF n'est actuellement actif.
-                    Un administrateur doit <Link href="/admin/upload" className="underline hover:text-yellow-800">télécharger un document</Link> pour en générer.
-                  </p>
-                </div>
-              </CardContent>
+         {isClient && !user && (
+             <Card className="bg-yellow-50 border-yellow-400 text-yellow-700 mt-6">
+                <CardContent className="p-4 flex items-start space-x-3">
+                    <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
+                    <div>
+                    <p className="text-sm font-semibold">Accès Restreint</p>
+                    <p className="text-xs">
+                        La bibliothèque PDF et les fonctionnalités de culture générale nécessitent une connexion.
+                        <Link href="/register" className="underline hover:text-yellow-800 font-semibold"> Inscrivez-vous ou connectez-vous</Link>.
+                    </p>
+                    </div>
+                </CardContent>
             </Card>
         )}
 
-        {!isLoadingPdfContent && pdfContentFromDb && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-              <CardHeader>
-                <BookOpenCheck className="h-12 w-12 text-primary mb-2" />
-                <CardTitle>Quiz sur Documents PDF</CardTitle>
-                <CardDescription>Testez vos connaissances sur le dernier contenu PDF téléchargé.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {!isClient ? (
-                  <p className="text-sm text-muted-foreground">Chargement...</p>
-                ) : !user ? (
-                  <p className="text-sm text-destructive">Veuillez <Link href="/register" className="underline hover:text-destructive/80">vous inscrire ou vous connecter</Link>.</p>
-                ) : !canStartPdfQuiz ? (
-                   <p className="text-sm text-destructive">Aucun quiz PDF actif ou le quiz est vide. Un administrateur doit <Link href="/admin/upload" className="underline hover:text-destructive/80">télécharger un document</Link> et générer un quiz avec des questions.</p>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Un quiz basé sur les documents PDF est disponible ({pdfContentFromDb.quiz.length} questions).</p>
-                )}
-              </CardContent>
-              <CardFooter>
-                <Button onClick={handleStartPdfQuiz} className="w-full" disabled={!isClient || !canStartPdfQuiz || isLoadingPdfContent}>
-                  {isLoadingPdfContent ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="ml-2 h-4 w-4" />}
-                  Commencer Quiz PDF
-                </Button>
-              </CardFooter>
-            </Card>
-
-            <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
-              <CardHeader>
-                <Lightbulb className="h-12 w-12 text-primary mb-2" />
-                <CardTitle>Infos Flash sur Documents PDF</CardTitle>
-                <CardDescription>Aperçus rapides des derniers documents PDF.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {!isClient ? (
-                    <p className="text-sm text-muted-foreground">Chargement...</p>
-                  ) : !user ? (
-                    <p className="text-sm text-destructive">Veuillez <Link href="/register" className="underline hover:text-destructive/80">vous inscrire ou vous connecter</Link>.</p>
-                  ) : !canViewPdfFlashInfo ? (
-                    <p className="text-sm text-destructive">Aucune info flash PDF active ou les infos sont vides. Un administrateur doit <Link href="/admin/upload" className="underline hover:text-destructive/80">générer du contenu</Link> avec des informations flash.</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Infos flash des PDF disponibles ({pdfContentFromDb.flashFacts?.length} faits).</p>
-                  )}
-              </CardContent>
-              <CardFooter>
-                <Button onClick={handleViewPdfFlashInfo} variant="secondary" className="w-full" disabled={!isClient || !canViewPdfFlashInfo || isLoadingPdfContent}>
-                   {isLoadingPdfContent ? <Loader2 className="animate-spin mr-2" /> : <ArrowRight className="ml-2 h-4 w-4" />}
-                  Voir Infos Flash PDF
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
-        )}
       </div>
 
       {/* Section for General Knowledge content */}

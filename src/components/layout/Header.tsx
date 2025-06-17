@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Home, UserPlus, UploadCloud, Bell, LogIn, UserCircle2, History } from 'lucide-react'; // Added UserCircle2, History
+import { Home, UserPlus, UploadCloud, Bell, LogIn, UserCircle2, History, Library } from 'lucide-react'; // Added Library
 import { useUser } from '@/context/UserContext';
 import {
   DropdownMenu,
@@ -31,23 +31,33 @@ export function Header() {
         <Link href="/" className="text-2xl font-headline font-bold hover:opacity-80 transition-opacity">
           QuizWhiz
         </Link>
-        <nav className="flex items-center space-x-2 sm:space-x-4">
-          <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80">
+        <nav className="flex items-center space-x-1 sm:space-x-2">
+          <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80 px-2 sm:px-3">
             <Link href="/" aria-label="Accueil">
               <Home className="h-5 w-5 sm:mr-1" />
               <span className="hidden sm:inline">Accueil</span>
             </Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80">
+
+          {user && (
+            <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80 px-2 sm:px-3">
+              <Link href="/pdf-library" aria-label="Bibliothèque PDF">
+                <Library className="h-5 w-5 sm:mr-1" />
+                <span className="hidden sm:inline">Biblio. PDF</span>
+              </Link>
+            </Button>
+          )}
+
+          <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80 px-2 sm:px-3">
             <Link href="/admin/upload" aria-label="Télécharger PDF">
               <UploadCloud className="h-5 w-5 sm:mr-1" />
-              <span className="hidden sm:inline">Admin (PDF)</span>
+              <span className="hidden sm:inline">Admin</span>
             </Link>
           </Button>
-          <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80">
+          <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80 px-2 sm:px-3">
             <Link href="/notifications" aria-label="Notifications">
               <Bell className="h-5 w-5 sm:mr-1" />
-              <span className="hidden sm:inline">Notifications</span>
+              <span className="hidden sm:inline">Notifs</span>
             </Link>
           </Button>
           {user ? (
@@ -83,7 +93,7 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80">
+            <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80 px-2 sm:px-3">
               <Link href="/register" aria-label="S'inscrire ou Se connecter">
                 <LogIn className="h-5 w-5 sm:mr-1" />
                  <span className="hidden sm:inline">S'inscrire</span>

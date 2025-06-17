@@ -11,9 +11,10 @@ export interface QuizQuestion {
   answer: string; 
 }
 
-export interface GeneratedQuiz {
+export interface GeneratedQuiz { // Ce qui est stocké dans localStorage (ACTIVE_QUIZ_DATA_KEY)
   quiz: QuizQuestion[];
   flashFacts?: string[]; 
+  sourceTitle?: string; // Pour afficher sur les pages de quiz/flash si besoin
 }
 
 export interface QuizAttempt {
@@ -31,3 +32,12 @@ export interface FeedbackItem {
   studySuggestion?: string;
 }
 
+// Nouveau type pour les entrées de la bibliothèque PDF
+export interface PdfContentEntry {
+  id: string;
+  title: string;
+  file_sources: string[];
+  quiz_data: QuizQuestion[] | null;
+  flash_facts_data: string[] | null;
+  created_at: string;
+}
