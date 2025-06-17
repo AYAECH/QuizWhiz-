@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -27,10 +28,8 @@ export function Header() {
   return (
     <header className="bg-primary text-primary-foreground shadow-md">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <Link href="/" legacyBehavior passHref>
-          <a className="text-2xl font-headline font-bold hover:opacity-80 transition-opacity">
-            QuizWhiz
-          </a>
+        <Link href="/" className="text-2xl font-headline font-bold hover:opacity-80 transition-opacity">
+          QuizWhiz
         </Link>
         <nav className="flex items-center space-x-2 sm:space-x-4">
           <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80">
@@ -89,3 +88,4 @@ export function Header() {
     </header>
   );
 }
+
