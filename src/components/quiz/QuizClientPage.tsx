@@ -10,8 +10,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-import { AlertTriangle, ChevronLeft, ChevronRight, CheckCircle, Loader2 } from 'lucide-react';
+import { AlertTriangle, ChevronRight, CheckCircle, Loader2, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const QUIZ_SESSION_KEY = 'quizwhiz_current_quiz_session_data'; 
 const QUIZ_ATTEMPT_RESULTS_KEY = 'quizwhiz_quiz_attempt_results'; 
@@ -27,6 +37,7 @@ export function QuizClientPage() {
   const [selectedOption, setSelectedOption] = useState<string | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showQuitConfirmDialog, setShowQuitConfirmDialog] = useState(false);
 
   useEffect(() => {
     if (userLoading) return; 
@@ -87,23 +98,15 @@ export function QuizClientPage() {
     }
   };
 
-  const handlePrevious = () => {
-    if (selectedOption && currentQuestion) { 
-      setUserAnswers(prev => ({ ...prev, [currentQuestionIndex]: selectedOption }));
-    }
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
-    }
-  };
-
-  const handleSubmitQuiz = () => {
+  const handleSubmitQuiz = (isQuitting: boolean = false) => {
     setIsSubmitting(true);
     let finalAnswers = userAnswers;
     if (selectedOption && currentQuestion) {
       finalAnswers = { ...userAnswers, [currentQuestionIndex]: selectedOption };
     }
     
-    if (Object.keys(finalAnswers).length !== quizData?.quiz.length) {
+    if (!isQuitting && Object.keys(finalAnswers).length !== quizData?.quiz.length) {
+        // This check is now only for regular submission, not for quitting
         toast({ title: 'Quiz Incomplet', description: `Veuillez répondre aux ${quizData?.quiz.length} questions avant de soumettre. Vous avez répondu à ${Object.keys(finalAnswers).length}.`, variant: 'destructive' });
         setIsSubmitting(false);
         return;
@@ -195,22 +198,46 @@ export function QuizClientPage() {
             ))}
           </RadioGroup>
         </CardContent>
-        <CardFooter className="flex justify-between pt-6">
-          <Button variant="outline" onClick={handlePrevious} disabled={currentQuestionIndex === 0 || isSubmitting}>
-            <ChevronLeft className="mr-2 h-4 w-4" /> Précédent
+        <CardFooter className="flex flex-col sm:flex-row justify-between pt-6 gap-2">
+          <Button variant="destructive" onClick={() => setShowQuitConfirmDialog(true)} disabled={isSubmitting} className="w-full sm:w-auto">
+            <LogOut className="mr-2 h-4 w-4" /> Quitter le Quiz
           </Button>
           {currentQuestionIndex < quizData.quiz.length - 1 ? (
-            <Button onClick={handleNext} disabled={isSubmitting}>
+            <Button onClick={handleNext} disabled={isSubmitting} className="w-full sm:w-auto">
               Suivant <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button onClick={handleSubmitQuiz} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700 text-white">
+            <Button onClick={() => handleSubmitQuiz(false)} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto">
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
               Soumettre le Quiz
             </Button>
           )}
         </CardFooter>
       </Card>
+
+      <AlertDialog open={showQuitConfirmDialog} onOpenChange={setShowQuitConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmer pour Quitter</AlertDialogTitle>
+            <AlertDialogDescription>
+              Si vous quittez maintenant, votre quiz sera noté en fonction des réponses que vous avez déjà fournies.
+              Êtes-vous sûr de vouloir quitter ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowQuitConfirmDialog(false)}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowQuitConfirmDialog(false);
+                handleSubmitQuiz(true);
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Quitter et Voir les Résultats
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
