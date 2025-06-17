@@ -1,3 +1,4 @@
+
 import { BellRing, AlertCircle, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +40,45 @@ const staticNotifications: Notification[] = [
 ];
 
 export default function NotificationsPage() {
+  const getNotificationCardHeaderClasses = (type: Notification['type']) => {
+    switch (type) {
+      case 'info':
+        return 'bg-primary/5 border-primary/20';
+      case 'update':
+        return 'bg-accent/5 border-accent/20';
+      case 'warning':
+        return 'bg-destructive/5 border-destructive/20';
+      default:
+        return 'bg-card';
+    }
+  };
+
+  const getNotificationIconContainerClasses = (type: Notification['type']) => {
+    switch (type) {
+      case 'info':
+        return 'bg-primary/10 text-primary';
+      case 'update':
+        return 'bg-accent/10 text-accent-foreground';
+      case 'warning':
+        return 'bg-destructive/10 text-destructive';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getNotificationTitleClasses = (type: Notification['type']) => {
+    switch (type) {
+      case 'info':
+        return 'text-primary';
+      case 'update':
+        return 'text-accent-foreground';
+      case 'warning':
+        return 'text-destructive';
+      default:
+        return 'text-card-foreground';
+    }
+  };
+
   return (
     <div className="container mx-auto py-8">
       <div className="text-center mb-12">
@@ -50,24 +90,12 @@ export default function NotificationsPage() {
         <div className="space-y-6 max-w-2xl mx-auto">
           {staticNotifications.map((notification) => (
             <Card key={notification.id} className="shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
-              <CardHeader className={`p-4 flex flex-row items-start space-x-4 ${
-                notification.type === 'info' ? 'bg-blue-50 border-blue-200' :
-                notification.type === 'update' ? 'bg-green-50 border-green-200' :
-                'bg-yellow-50 border-yellow-200'
-              }`}>
-                <div className={`p-2 rounded-full ${
-                  notification.type === 'info' ? 'bg-blue-100 text-blue-600' :
-                  notification.type === 'update' ? 'bg-green-100 text-green-600' :
-                  'bg-yellow-100 text-yellow-600'
-                }`}>
+              <CardHeader className={`p-4 flex flex-row items-start space-x-4 ${getNotificationCardHeaderClasses(notification.type)}`}>
+                <div className={`p-2 rounded-full ${getNotificationIconContainerClasses(notification.type)}`}>
                   <notification.icon className="h-6 w-6" />
                 </div>
                 <div>
-                  <CardTitle className={`text-lg font-semibold ${
-                    notification.type === 'info' ? 'text-blue-800' :
-                    notification.type === 'update' ? 'text-green-800' :
-                    'text-yellow-800'
-                  }`}>{notification.title}</CardTitle>
+                  <CardTitle className={`text-lg font-semibold ${getNotificationTitleClasses(notification.type)}`}>{notification.title}</CardTitle>
                   <p className="text-xs text-muted-foreground">{notification.date}</p>
                 </div>
               </CardHeader>

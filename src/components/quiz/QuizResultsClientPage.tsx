@@ -1,6 +1,8 @@
+
 'use client';
 
-import { useEffect, useState }_ from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { QuizAttempt, QuizQuestion, FeedbackItem } from '@/types';
 import { useUser } from '@/context/UserContext';
@@ -40,12 +42,12 @@ export function QuizResultsClientPage() {
       } catch (error) {
         console.error("Failed to parse attempt data", error);
         toast({ title: 'Error Loading Results', description: 'Could not load quiz results.', variant: 'destructive' });
-        router.push('/'); // or quiz/start
+        router.push('/'); 
         return;
       }
     } else {
       toast({ title: 'No Results Found', description: 'Quiz results not found.', variant: 'destructive' });
-      router.push('/'); // or quiz/start
+      router.push('/'); 
       return;
     }
     setIsLoading(false);
@@ -68,7 +70,7 @@ export function QuizResultsClientPage() {
               question: incorrectQ.question,
               userAnswer: userAnswer,
               correctAnswer: incorrectQ.answer,
-              context: `Original question: "${incorrectQ.question}". User selected "${userAnswer}" while correct was "${incorrectQ.answer}". From document: ${attemptData.pdfUriUsed ? "related to the uploaded PDF." : "general knowledge."}`, // Simplified context
+              context: `Original question: "${incorrectQ.question}". User selected "${userAnswer}" while correct was "${incorrectQ.answer}". From document: ${attemptData.pdfUriUsed ? "related to the uploaded PDF." : "general knowledge."}`, 
             });
             newFeedbackItems.push({
               question: incorrectQ.question,
@@ -95,11 +97,13 @@ export function QuizResultsClientPage() {
     }
   }, [attemptData, toast]);
   
-  // useEffect(() => { // Cleanup results from local storage when component unmounts or on navigation
-  //   return () => {
-  //     localStorage.removeItem(QUIZ_ATTEMPT_RESULTS_KEY);
-  //   };
-  // }, []);
+  useEffect(() => { 
+    return () => {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(QUIZ_ATTEMPT_RESULTS_KEY);
+      }
+    };
+  }, []);
 
 
   if (isLoading || userLoading) {
@@ -112,7 +116,6 @@ export function QuizResultsClientPage() {
   }
 
   if (!attemptData) {
-    // This case should ideally be handled by the redirect in useEffect, but as a fallback:
     return <p>No quiz attempt data found. <Link href="/" className="text-primary underline">Go Home</Link></p>;
   }
 
@@ -155,12 +158,12 @@ export function QuizResultsClientPage() {
                     <AccordionContent className="px-4 pt-2 pb-4 space-y-3 bg-card">
                       <p><strong>Your Answer:</strong> <span className="text-red-600">{item.userAnswer}</span></p>
                       <p><strong>Correct Answer:</strong> <span className="text-green-600">{item.correctAnswer}</span></p>
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <div className="p-3 bg-primary/5 border-primary/20 rounded-md">
                         <div className="flex items-start space-x-2">
-                          <MessageSquare className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                          <MessageSquare className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                           <div>
-                            <p className="font-semibold text-blue-700">Explanation:</p>
-                            <p className="text-sm text-blue-700">{item.explanation}</p>
+                            <p className="font-semibold text-primary">Explanation:</p>
+                            <p className="text-sm text-primary/90">{item.explanation}</p>
                           </div>
                         </div>
                       </div>
