@@ -1,5 +1,6 @@
 
 export interface User {
+  id?: string; // Supabase user ID
   name: string;
   email: string;
 }

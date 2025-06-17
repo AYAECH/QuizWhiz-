@@ -10,8 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { provideEducationalFeedback } from '@/ai/flows/provide-educational-feedback';
-import { CheckCircle, XCircle, MessageSquare, Loader2, Home, RotateCcw, HelpCircle } from 'lucide-react';
+import { CheckCircle, XCircle, MessageSquare, Loader2, Home, RotateCcw, HelpCircle, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/lib/supabaseClient'; // Import Supabase client
 
 const QUIZ_ATTEMPT_RESULTS_KEY = 'quizwhiz_quiz_attempt_results';
 
@@ -24,6 +25,7 @@ export function QuizResultsClientPage() {
   const [feedbackItems, setFeedbackItems] = useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFetchingFeedback, setIsFetchingFeedback] = useState(false);
+  const [isSavingScore, setIsSavingScore] = useState(false);
 
   useEffect(() => {
     if (userLoading) return;
@@ -53,6 +55,58 @@ export function QuizResultsClientPage() {
     setIsLoading(false);
   }, [user, userLoading, router, toast]);
 
+  // Effect to save score to Supabase once attemptData and user.id are available
+  useEffect(() => {
+    const saveScoreToSupabase = async () => {
+      if (attemptData && user?.id && supabase) {
+        setIsSavingScore(true);
+        // Determine quiz title (simplified for now)
+        let quizTitle = "Quiz"; 
+        // Example: if (attemptData.quizDefinition.sourceType === 'PDF') quizTitle = "Quiz PDF";
+        // else if (attemptData.quizDefinition.topic) quizTitle = `Culture Générale: ${attemptData.quizDefinition.topic}`;
+        
+        // For now, we don't have sourceType or topic in GeneratedQuiz consistently
+        // We can add it later for more detailed titles.
+        // A simple approach is to check if flashFacts has specific content or quiz has questions.
+        if (attemptData.quizDefinition.quiz && attemptData.quizDefinition.quiz.length > 0){
+            quizTitle = "Quiz de Culture Générale / PDF"; // Generic title
+        } else if (attemptData.quizDefinition.flashFacts && attemptData.quizDefinition.flashFacts.length > 0) {
+            quizTitle = "Informations Flash";
+        }
+
+
+        const { error } = await supabase.from('quiz_attempts').insert({
+          user_id: user.id,
+          score: attemptData.score,
+          total_questions: attemptData.totalQuestions,
+          quiz_title: quizTitle 
+        });
+
+        if (error) {
+          console.error('Error saving quiz attempt to Supabase:', error);
+          toast({
+            title: 'Erreur Sauvegarde Score',
+            description: 'Votre score n\'a pas pu être sauvegardé en ligne.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Score Sauvegardé',
+            description: 'Votre score a été sauvegardé avec succès en ligne.',
+            className: 'bg-green-500 text-white',
+          });
+        }
+        setIsSavingScore(false);
+      }
+    };
+
+    if (attemptData && user?.id) {
+       saveScoreToSupabase();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attemptData, user?.id]); // Run when attemptData or user.id changes and are available
+
+
   useEffect(() => {
     if (attemptData) {
       const fetchFeedbackForAll = async () => {
@@ -67,13 +121,11 @@ export function QuizResultsClientPage() {
           const questionObj = attemptData.quizDefinition.quiz[index];
           const userAnswer = attemptData.userAnswers[index];
           try {
-            // Prepare context in English as the AI model might be more robust with English context,
-            // but request French explanation.
             const feedbackOutput = await provideEducationalFeedback({
-              question: questionObj.question, // This will be in French if generated correctly
-              userAnswer: userAnswer, // This will be in French
-              correctAnswer: questionObj.answer, // This will be in French
-              context: `The user was asked: "${questionObj.question}". They answered "${userAnswer}", but the correct answer was "${questionObj.answer}". This question was generated in French from an uploaded PDF document. Please provide an explanation in French.`, 
+              question: questionObj.question,
+              userAnswer: userAnswer,
+              correctAnswer: questionObj.answer,
+              context: `L'utilisateur a répondu à la question : "${questionObj.question}". Sa réponse était "${userAnswer}", mais la bonne réponse était "${questionObj.answer}". Cette question a été générée en français. Veuillez fournir une explication EN FRANÇAIS.`, 
             });
             newFeedbackItems.push({
               question: questionObj.question,
@@ -135,7 +187,7 @@ export function QuizResultsClientPage() {
     );
   }
 
-  const { score, totalQuestions, quizDefinition, userAnswers } = attemptData;
+  const { score, totalQuestions } = attemptData;
   const percentage = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
   const scoreColor = percentage >= 70 ? 'text-green-600' : percentage >= 40 ? 'text-yellow-600' : 'text-red-600';
 
@@ -151,6 +203,11 @@ export function QuizResultsClientPage() {
             <p className="text-xl font-semibold">Votre Score :</p>
             <p className={`text-6xl font-bold ${scoreColor}`}>{score} / {totalQuestions}</p>
             <p className={`text-3xl font-semibold ${scoreColor}`}>{percentage.toFixed(1)}%</p>
+            {isSavingScore && (
+              <div className="flex items-center justify-center text-sm text-muted-foreground mt-2">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sauvegarde du score en ligne...
+              </div>
+            )}
           </div>
 
           {(feedbackItems.length > 0 || isFetchingFeedback) && score < totalQuestions && (
