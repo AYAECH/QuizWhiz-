@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Home, UserPlus, UploadCloud, Bell, LogIn, UserCircle } from 'lucide-react';
+import { Home, UserPlus, UploadCloud, Bell, LogIn, UserCircle2, History } from 'lucide-react'; // Added UserCircle2, History
 import { useUser } from '@/context/UserContext';
 import {
   DropdownMenu,
@@ -55,7 +55,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full hover:bg-primary/80">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src={`https://avatar.vercel.sh/${user.email}.png`} alt={user.name} />
+                    <AvatarImage src={`https://avatar.vercel.sh/${user.email}.png?size=36`} alt={user.name} />
                     <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
                   </Avatar>
                 </Button>
@@ -70,7 +70,14 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logoutUser} className="cursor-pointer">
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/profile">
+                    <History className="mr-2 h-4 w-4" />
+                    Mon Profil / Historique
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logoutUser} className="cursor-pointer text-red-600 focus:bg-red-50 focus:text-red-700">
                   Déconnexion
                 </DropdownMenuItem>
               </DropdownMenuContent>
