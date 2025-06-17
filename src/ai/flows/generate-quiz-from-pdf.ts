@@ -18,7 +18,7 @@ const GenerateQuizFromPdfInputSchema = z.object({
     .describe(
       "Un document PDF, sous forme d'URI de données qui doit inclure un type MIME et utiliser l'encodage Base64. Format attendu : 'data:<mimetype>;base64,<encoded_data>'."
     )).describe('Un tableau de documents PDF sous forme d\'URI de données.'),
-  numQuestions: z.number().int().min(5).max(100).describe("Le nombre de questions souhaité à générer, entre 5 et 100."),
+  numQuestions: z.number().int().min(5).max(2000).describe("Le nombre de questions souhaité à générer, entre 5 et 2000."),
 });
 export type GenerateQuizFromPdfInput = z.infer<typeof GenerateQuizFromPdfInputSchema>;
 
@@ -52,8 +52,8 @@ export async function generateQuizFromPdf(input: GenerateQuizFromPdfInput): Prom
   if (!input.pdfDataUris || input.pdfDataUris.length === 0) {
     throw new Error('Aucun document PDF fourni.');
   }
-  if (input.numQuestions < 5 || input.numQuestions > 100) {
-    throw new Error('Le nombre de questions doit être compris entre 5 et 100.');
+  if (input.numQuestions < 5 || input.numQuestions > 2000) {
+    throw new Error('Le nombre de questions doit être compris entre 5 et 2000.');
   }
   return generateQuizFromPdfFlow(input);
 }
@@ -103,7 +103,7 @@ const generateQuizFromPdfFlow = ai.defineFlow(
     outputSchema: GenerateQuizFromPdfOutputSchema, // Flow declares the strict output schema
   },
   async (input): Promise<GenerateQuizFromPdfOutput> => {
-    const {output: lenientOutput} = await prompt(input);
+    const {output: lenientOutput} = await prompt(input); // Genkit performs schema validation here
 
     if (!lenientOutput || !lenientOutput.quiz) {
       throw new Error('L\'IA n\'a pas généré de questions de quiz ou a retourné une structure de quiz invalide.');

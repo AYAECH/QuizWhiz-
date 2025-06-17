@@ -73,10 +73,10 @@ export function PdfUploadForm() {
     }
 
     const parsedNumQuestions = parseInt(numQuestions, 10);
-    if (isNaN(parsedNumQuestions) || parsedNumQuestions < 5 || parsedNumQuestions > 100) {
+    if (isNaN(parsedNumQuestions) || parsedNumQuestions < 5 || parsedNumQuestions > 2000) {
       toast({
         title: 'Nombre de Questions Invalide',
-        description: 'Veuillez entrer un nombre entre 5 et 100.',
+        description: 'Veuillez entrer un nombre entre 5 et 2000.',
         variant: 'destructive',
       });
       return;
@@ -214,14 +214,14 @@ export function PdfUploadForm() {
           value={numQuestions}
           onChange={handleNumQuestionsChange}
           min="5"
-          max="100"
+          max="2000"
           step="1"
           className="w-full"
           aria-describedby="num-questions-help"
           disabled={isLoading}
         />
         <p id="num-questions-help" className="text-sm text-muted-foreground">
-          Entrez le nombre de questions de quiz souhaité (5-100). 
+          Entrez le nombre de questions de quiz souhaité (5-2000). 
         </p>
       </div>
 
