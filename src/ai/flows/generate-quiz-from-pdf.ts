@@ -66,10 +66,10 @@ const prompt = ai.definePrompt({
 En fonction de cette analyse, vous produirez une sortie JSON avec deux champs principaux : 'quiz' et 'flashFacts'. Tout le contenu textuel généré DOIT être en FRANÇAIS.
 
 1.  **Génération de Quiz (champ 'quiz') :**
-    *   Générez environ {{{numQuestions}}} questions de quiz à choix multiples, EN FRANÇAIS. Essayez de vous approcher de ce nombre.
+    *   Générez environ {{{numQuestions}}} questions de quiz à choix multiples, EN FRANÇAIS, **strictement basées sur le contenu des documents PDF fournis**.
     *   **CRUCIAL : Chaque objet question dans le tableau 'quiz' DOIT impérativement contenir les trois champs suivants : 'question' (une chaîne de caractères non vide), 'options' (un tableau de EXACTEMENT 4 chaînes de caractères non vides et distinctes), et 'answer' (une chaîne de caractères non vide, qui doit être l'une des 4 options). Ne pas omettre AUCUN de ces champs pour AUCUNE question. Assurez-vous que le JSON est valide et complet pour chaque question.**
     *   Si, après une analyse approfondie, aucune question de quiz pertinente et **entièrement conforme aux exigences ci-dessus** ne peut être extraite du document, retournez **impérativement un tableau vide (\`[]\`)** pour le champ 'quiz'. Autrement, si des questions sont générées, assurez-vous que chaque objet question respecte la structure {question: string, options: string[4], answer: string}.
-    *   Il est crucial que chaque quiz que vous générez soit significativement différent de tout quiz précédent, même s'il est basé sur les mêmes documents. Visez l'originalité dans la formulation des questions, la sélection des sujets et la construction des distracteurs (options incorrectes). Assurez-vous que les questions ne sont pas trop similaires entre elles au sein d'un même quiz.
+    *   **IMPORTANT : À chaque fois que ce prompt est appelé, même si les documents PDF d'entrée sont identiques, vous devez vous efforcer de générer un ENSEMBLE DE QUESTIONS DISTINCT ET ORIGINAL. Variez la formulation des questions, les sujets abordés (tout en restant fidèle au contenu du PDF), et les options de réponse (distracteurs). Ne répétez pas les questions générées lors d'appels précédents.**
     *   Chaque question doit avoir EXACTEMENT 4 options de réponse distinctes et plausibles, EN FRANÇAIS. Toutes les options doivent être des chaînes de caractères non vides.
     *   Une seule option peut être la bonne réponse.
     *   Assurez-vous que les questions couvrent un éventail large et diversifié de sujets issus des documents. Évitez de vous concentrer sur une seule section ou de répéter excessivement des concepts.
@@ -164,7 +164,7 @@ const generateQuizFromPdfFlow = ai.defineFlow(
     }
 
 
-    // The UI (PdfUploadForm) will handle the case where both are empty by showing a toast.
+    // The UI (PdfUploadForm or ConfigurePdfQuizPage) will handle the case where both are empty by showing a toast.
     // This flow will now always return a valid GenerateQuizFromPdfOutput structure, even if arrays are empty.
     if (validQuiz.length === 0 && (!finalFlashFacts || finalFlashFacts.length === 0)) {
       if (!lenientOutput?.quiz && !lenientOutput?.flashFacts) {
