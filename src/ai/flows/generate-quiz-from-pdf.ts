@@ -66,7 +66,7 @@ const prompt = ai.definePrompt({
 En fonction de cette analyse, vous produirez une sortie JSON avec deux champs principaux : 'quiz' et 'flashFacts'. Tout le contenu textuel généré DOIT être en FRANÇAIS.
 
 1.  **Génération de Quiz (champ 'quiz') :**
-    *   Générez environ {{{numQuestions}}} questions de quiz à choix multiples, EN FRANÇAIS. Essayez de vous approcher de ce nombre.
+    *   Générez environ {{{numQuestions}}} questions de quiz à choix multiples, EN FRANÇAIS. Essayez de vous approcher de ce nombre. Si, après une analyse approfondie, aucune question de quiz pertinente ne peut être extraite du document, retournez un tableau vide pour le champ 'quiz'.
     *   **IMPORTANT : Chaque objet question dans le tableau 'quiz' DOIT impérativement contenir les trois champs suivants : 'question' (une chaîne de caractères non vide), 'options' (un tableau de EXACTEMENT 4 chaînes de caractères non vides), et 'answer' (une chaîne de caractères non vide, qui doit être l'une des 4 options). Ne pas omettre AUCUN de ces champs pour AUCUNE question. Assurez-vous que le JSON est valide et complet pour chaque question.**
     *   Il est crucial que chaque quiz que vous générez soit significativement différent de tout quiz précédent, même s'il est basé sur les mêmes documents. Visez l'originalité dans la formulation des questions, la sélection des sujets et la construction des distracteurs (options incorrectes). Assurez-vous que les questions ne sont pas trop similaires entre elles au sein d'un même quiz.
     *   Chaque question doit avoir EXACTEMENT 4 options de réponse distinctes et plausibles, EN FRANÇAIS. Toutes les options doivent être des chaînes de caractères non vides.
@@ -167,3 +167,4 @@ const generateQuizFromPdfFlow = ai.defineFlow(
     };
   }
 );
+
