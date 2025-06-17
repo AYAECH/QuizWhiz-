@@ -8,13 +8,14 @@ import { useUser } from '@/context/UserContext';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Loader2, AlertTriangle, Home, Library, BookOpenCheck, Lightbulb, FileText } from 'lucide-react';
+import { Loader2, AlertTriangle, Home, Library, BookOpenCheck, Lightbulb, FileText, PlayCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { PdfContentEntry, GeneratedQuiz } from '@/types';
 
-const ACTIVE_QUIZ_DATA_KEY = 'quizwhiz_active_quiz_data';
+const QUIZ_SESSION_KEY = 'quizwhiz_current_quiz_session_data';
+const ACTIVE_QUIZ_DATA_KEY = 'quizwhiz_active_quiz_data'; // Still needed for flash info
 
 export default function PdfLibraryPage() {
   const router = useRouter();
@@ -76,13 +77,14 @@ export default function PdfLibraryPage() {
       toast({ title: 'Quiz Vide', description: 'Ce contenu PDF ne contient pas de questions de quiz.', variant: 'destructive'});
       return;
     }
-    const quizToStore: GeneratedQuiz = {
+    const quizSessionData: GeneratedQuiz = {
       quiz: content.quiz_data,
       flashFacts: content.flash_facts_data || [],
       sourceTitle: content.title || "Quiz PDF"
     };
-    localStorage.setItem(ACTIVE_QUIZ_DATA_KEY, JSON.stringify(quizToStore));
-    router.push('/quiz/start');
+    localStorage.setItem(QUIZ_SESSION_KEY, JSON.stringify(quizSessionData));
+    toast({ title: 'Quiz Prêt !', description: `Votre quiz sur "${quizSessionData.sourceTitle}" démarre.` });
+    router.push('/quiz/play');
   };
 
   const handleViewPdfFlashInfo = (content: PdfContentEntry) => {
@@ -91,7 +93,7 @@ export default function PdfLibraryPage() {
       return;
     }
     const flashInfoToStore: GeneratedQuiz = {
-      quiz: content.quiz_data || [], // Include quiz data even if empty, for consistency
+      quiz: content.quiz_data || [], 
       flashFacts: content.flash_facts_data,
       sourceTitle: content.title || "Infos Flash PDF"
     };
@@ -183,7 +185,7 @@ export default function PdfLibraryPage() {
                       disabled={!content.quiz_data || content.quiz_data.length === 0}
                       className="w-full sm:w-auto"
                     >
-                      <BookOpenCheck className="mr-2 h-4 w-4" /> Démarrer le Quiz
+                      <PlayCircle className="mr-2 h-4 w-4" /> Démarrer le Quiz
                     </Button>
                   </CardFooter>
                 </Card>
