@@ -68,7 +68,7 @@ En fonction de cette analyse, vous produirez une sortie JSON avec deux champs pr
 1.  **Génération de Quiz (champ 'quiz') :**
     *   Générez environ {{{numQuestions}}} questions de quiz à choix multiples, EN FRANÇAIS, **strictement basées sur le contenu des documents PDF fournis**.
     *   **CRUCIAL : Chaque objet question dans le tableau 'quiz' DOIT impérativement contenir les trois champs suivants : 'question' (une chaîne de caractères non vide), 'options' (un tableau de EXACTEMENT 4 chaînes de caractères non vides et distinctes), et 'answer' (une chaîne de caractères non vide, qui doit être l'une des 4 options). Ne pas omettre AUCUN de ces champs pour AUCUNE question. Assurez-vous que le JSON est valide et complet pour chaque question.**
-    *   **Absolument crucial :** Si vous ne pouvez pas générer de questions qui respectent **toutes** ces règles (par exemple, si le document est vide, illisible, ou ne contient pas assez d'informations pour le nombre de questions demandé), vous DEVEZ retourner \\`"quiz": []\\` (un tableau vide pour la clé 'quiz') dans l'objet JSON. NE PAS omettre la clé 'quiz'. NE PAS retourner d'objets question incomplets ou mal formés. Autrement, si des questions sont générées, assurez-vous que chaque objet question respecte la structure {question: string, options: string[4], answer: string}.
+    *   **Absolument crucial :** Si vous ne pouvez pas générer de questions qui respectent **toutes** ces règles (par exemple, si le document est vide, illisible, ou ne contient pas assez d'informations pour le nombre de questions demandé), vous DEVEZ retourner "{\"quiz\": []}" (un tableau vide pour la clé 'quiz') dans l'objet JSON. NE PAS omettre la clé 'quiz'. NE PAS retourner d'objets question incomplets ou mal formés. Autrement, si des questions sont générées, assurez-vous que chaque objet question respecte la structure {question: string, options: string[4], answer: string}.
     *   **IMPORTANT : À chaque fois que ce prompt est appelé, même si les documents PDF d'entrée sont identiques, vous devez vous efforcer de générer un ENSEMBLE DE QUESTIONS DISTINCT ET ORIGINAL. Variez la formulation des questions, les sujets abordés (tout en restant fidèle au contenu du PDF), et les options de réponse (distracteurs). Ne répétez pas les questions générées lors d'appels précédents.**
     *   Chaque question doit avoir EXACTEMENT 4 options de réponse distinctes et plausibles, EN FRANÇAIS. Toutes les options doivent être des chaînes de caractères non vides.
     *   Une seule option peut être la bonne réponse.
@@ -81,7 +81,7 @@ En fonction de cette analyse, vous produirez une sortie JSON avec deux champs pr
     *   Produisez une LISTE (un tableau JavaScript de chaînes de caractères) de faits saillants, de points clés ou d'extraits intéressants et CONCIS issus de TOUS les documents fournis. Ces informations sont destinées à un apprentissage rapide ("flash").
     *   Chaque élément de la liste doit être une phrase courte, percutante, et non vide, EN FRANÇAIS.
     *   Le champ 'flashFacts' dans la sortie JSON doit être un tableau de chaînes de caractères. VISEZ À EXTRAIRE DES INFORMATIONS UTILES ET PERTINENTES.
-    *   Si, après une analyse approfondie, aucun fait flash adapté, **non vide et pertinent** (différent de phrases génériques comme "Aucune information spécifique..." ou "Aucun fait flash adapté..."), ne peut être extrait, retournez **impérativement un tableau vide (\\`[]\\`)** pour 'flashFacts'. Autrement, si des faits sont générés, assurez-vous que 'flashFacts' est un tableau de chaînes.
+    *   Si, après une analyse approfondie, aucun fait flash adapté, **non vide et pertinent** (différent de phrases génériques comme "Aucune information spécifique..." ou "Aucun fait flash adapté..."), ne peut être extrait, retournez **impérativement un tableau vide ("[]")** pour 'flashFacts'. Autrement, si des faits sont générés, assurez-vous que 'flashFacts' est un tableau de chaînes.
 
 Le format de sortie doit être JSON. L'intégralité du contenu textuel (questions, options, réponses, flashFacts) doit être EN FRANÇAIS.
 ASSUREZ-VOUS QUE LA SORTIE GLOBALE EST UN OBJET JSON VALIDE CONTENANT LES CLÉS 'quiz' (un tableau d'objets question ou un tableau vide) ET 'flashFacts' (un tableau de chaînes de caractères ou un tableau vide). Il est acceptable de retourner un tableau vide pour 'quiz' si aucune question valide ne peut être formée, et/ou un tableau vide pour 'flashFacts' si aucun fait pertinent ne peut être extrait. L'important est que la structure JSON globale soit valide.
@@ -166,8 +166,10 @@ const generateQuizFromPdfFlow = ai.defineFlow(
 
     if (validQuiz.length === 0 && (!finalFlashFacts || finalFlashFacts.length === 0)) {
       if (!lenientOutput?.quiz && !lenientOutput?.flashFacts) {
+        // This means AI returned a malformed object or something unexpected at the top level.
         console.warn('[PDF_QUIZ_FLOW] AI did not return neither quiz nor flashFacts in its raw output. Flow will return empty arrays.');
       } else {
+        // This means AI returned 'quiz' and/or 'flashFacts' keys, but their content was empty or filtered out.
         console.warn("[PDF_QUIZ_FLOW] AI failed to generate any significant content (neither valid quiz questions nor relevant flash facts) after filtering. Flow will return empty arrays.");
       }
     }
