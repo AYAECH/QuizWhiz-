@@ -7,8 +7,8 @@ export default function RegisterPage() {
     <div className="flex justify-center items-center py-8">
       <Card className="w-full max-w-md shadow-xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl">Register for QuizWhiz</CardTitle> {/* font-headline applied via CardTitle component */}
-          <CardDescription>Enter your details to start taking quizzes and track your progress.</CardDescription>
+          <CardTitle className="text-3xl">Inscrivez-vous à QuizWhiz</CardTitle>
+          <CardDescription>Entrez vos informations pour commencer à répondre aux quiz et suivre vos progrès.</CardDescription>
         </CardHeader>
         <CardContent>
           <RegistrationForm />

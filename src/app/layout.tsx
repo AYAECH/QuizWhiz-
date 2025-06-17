@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -6,7 +7,7 @@ import { UserProvider } from '@/context/UserContext';
 
 export const metadata: Metadata = {
   title: 'QuizWhiz',
-  description: 'Interactive learning and assessment application',
+  description: 'Application interactive d\'apprentissage et d\'évaluation',
 };
 
 export default function RootLayout({
@@ -15,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="fr">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

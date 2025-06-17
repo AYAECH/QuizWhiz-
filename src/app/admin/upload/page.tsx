@@ -11,9 +11,9 @@ export default function AdminUploadPage() {
           <div className="mx-auto bg-primary/10 text-primary rounded-full p-3 w-fit mb-2">
             <ShieldCheck className="h-10 w-10" />
           </div>
-          <CardTitle className="text-3xl">Admin: Upload Document</CardTitle> {/* font-headline applied via CardTitle component */}
+          <CardTitle className="text-3xl">Admin : Télécharger un Document</CardTitle>
           <CardDescription>
-            Upload PDF document(s) to automatically generate a new quiz. This will replace any existing active quiz.
+            Téléchargez un ou plusieurs documents PDF pour générer automatiquement un nouveau quiz et des informations flash. Cela remplacera tout quiz actif existant.
           </CardDescription>
         </CardHeader>
         <CardContent>

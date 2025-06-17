@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,11 +17,11 @@ import { Input } from '@/components/ui/input';
 import { useUser } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { User } from 'lucide-react';
+import { User as UserIcon } from 'lucide-react'; // Renamed to avoid conflict with User type
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
-  email: z.string().email({ message: 'Please enter a valid email address.' }),
+  name: z.string().min(2, { message: 'Le nom doit comporter au moins 2 caractères.' }),
+  email: z.string().email({ message: 'Veuillez entrer une adresse e-mail valide.' }),
 });
 
 type RegistrationFormValues = z.infer<typeof formSchema>;
@@ -41,8 +42,8 @@ export function RegistrationForm() {
   function onSubmit(values: RegistrationFormValues) {
     loginUser(values);
     toast({
-      title: 'Registration Successful!',
-      description: `Welcome, ${values.name}! You can now start taking quizzes.`,
+      title: 'Inscription Réussie !',
+      description: `Bienvenue, ${values.name} ! Vous pouvez maintenant commencer à répondre aux quiz.`,
     });
     router.push('/');
   }
@@ -55,9 +56,9 @@ export function RegistrationForm() {
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Full Name</FormLabel>
+              <FormLabel>Nom Complet</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. Jane Doe" {...field} aria-describedby="name-error" />
+                <Input placeholder="Ex : Jeanne Dupont" {...field} aria-describedby="name-error" />
               </FormControl>
               <FormMessage id="name-error" />
             </FormItem>
@@ -68,16 +69,16 @@ export function RegistrationForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email Address</FormLabel>
+              <FormLabel>Adresse E-mail</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="e.g. jane.doe@example.com" {...field} aria-describedby="email-error" />
+                <Input type="email" placeholder="Ex : jeanne.dupont@example.com" {...field} aria-describedby="email-error" />
               </FormControl>
               <FormMessage id="email-error" />
             </FormItem>
           )}
         />
         <Button type="submit" className="w-full">
-          <User className="mr-2 h-4 w-4" /> Register
+          <UserIcon className="mr-2 h-4 w-4" /> S'inscrire
         </Button>
       </form>
     </Form>

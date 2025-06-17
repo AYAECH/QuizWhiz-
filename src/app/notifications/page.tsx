@@ -12,29 +12,31 @@ interface Notification {
   icon: React.ElementType;
 }
 
+// Ces notifications sont statiques et seront affichées telles quelles.
+// Pour une application entièrement en français, elles devraient être gérées dynamiquement ou adaptées.
 const staticNotifications: Notification[] = [
   {
     id: '1',
-    title: 'Welcome to QuizWhiz!',
-    message: 'We are excited to have you here. Explore quizzes and enhance your knowledge.',
+    title: 'Bienvenue sur QuizWhiz !',
+    message: 'Nous sommes ravis de vous accueillir. Explorez les quiz et améliorez vos connaissances.',
     type: 'info',
-    date: 'October 26, 2023',
+    date: '26 Octobre 2023', // Exemple de date, à adapter
     icon: Info,
   },
   {
     id: '2',
-    title: 'New Quiz Feature: AI Explanations',
-    message: 'Incorrect answers now come with AI-generated explanations to help you learn better.',
+    title: 'Nouvelle Fonctionnalité : Explications par IA',
+    message: 'Les réponses incorrectes sont maintenant accompagnées d\'explications générées par IA pour vous aider à mieux apprendre.',
     type: 'update',
-    date: 'October 28, 2023',
+    date: '28 Octobre 2023',
     icon: BellRing,
   },
   {
     id: '3',
-    title: 'Scheduled Maintenance',
-    message: 'QuizWhiz will undergo scheduled maintenance on Nov 5th, 2 AM - 4 AM UTC. Services might be temporarily unavailable.',
+    title: 'Maintenance Programmée',
+    message: 'QuizWhiz sera en maintenance programmée le 5 Nov, de 2h à 4h UTC. Les services pourraient être temporairement indisponibles.',
     type: 'warning',
-    date: 'October 30, 2023',
+    date: '30 Octobre 2023',
     icon: AlertCircle,
   },
 ];
@@ -83,7 +85,7 @@ export default function NotificationsPage() {
     <div className="container mx-auto py-8">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-headline font-bold text-primary">Notifications</h1>
-        <p className="text-lg text-muted-foreground mt-2">Stay informed with the latest updates and announcements.</p>
+        <p className="text-lg text-muted-foreground mt-2">Restez informé des dernières mises à jour et annonces.</p>
       </div>
 
       {staticNotifications.length > 0 ? (
@@ -108,8 +110,8 @@ export default function NotificationsPage() {
       ) : (
         <div className="text-center py-10">
           <BellRing className="h-24 w-24 text-muted-foreground mx-auto mb-4" />
-          <p className="text-xl text-muted-foreground">No new notifications.</p>
-          <p className="text-sm text-muted-foreground">Check back later for updates.</p>
+          <p className="text-xl text-muted-foreground">Aucune nouvelle notification.</p>
+          <p className="text-sm text-muted-foreground">Revenez plus tard pour les mises à jour.</p>
         </div>
       )}
     </div>

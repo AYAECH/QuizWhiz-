@@ -1,3 +1,4 @@
+
 import type { ReactNode } from 'react';
 import { Header } from './Header';
 
@@ -13,7 +14,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         {children}
       </main>
       <footer className="bg-muted text-muted-foreground py-6 text-center">
-        <p>&copy; {new Date().getFullYear()} QuizWhiz. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} QuizWhiz. Tous droits réservés.</p>
       </footer>
     </div>
   );

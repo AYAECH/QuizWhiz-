@@ -33,15 +33,15 @@ export function Header() {
         </Link>
         <nav className="flex items-center space-x-2 sm:space-x-4">
           <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80">
-            <Link href="/" aria-label="Home">
+            <Link href="/" aria-label="Accueil">
               <Home className="h-5 w-5 sm:mr-1" />
-              <span className="hidden sm:inline">Home</span>
+              <span className="hidden sm:inline">Accueil</span>
             </Link>
           </Button>
           <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80">
-            <Link href="/admin/upload" aria-label="Upload PDF">
+            <Link href="/admin/upload" aria-label="Télécharger PDF">
               <UploadCloud className="h-5 w-5 sm:mr-1" />
-              <span className="hidden sm:inline">Admin Upload</span>
+              <span className="hidden sm:inline">Admin (PDF)</span>
             </Link>
           </Button>
           <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80">
@@ -71,15 +71,15 @@ export function Header() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logoutUser} className="cursor-pointer">
-                  Log out
+                  Déconnexion
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <Button variant="ghost" size="sm" asChild className="hover:bg-primary/80">
-              <Link href="/register" aria-label="Register or Login">
+              <Link href="/register" aria-label="S'inscrire ou Se connecter">
                 <LogIn className="h-5 w-5 sm:mr-1" />
-                 <span className="hidden sm:inline">Register</span>
+                 <span className="hidden sm:inline">S'inscrire</span>
               </Link>
             </Button>
           )}
@@ -88,4 +88,3 @@ export function Header() {
     </header>
   );
 }
-

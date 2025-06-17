@@ -7,17 +7,17 @@ export interface User {
 export interface QuizQuestion {
   question: string;
   options: string[];
-  answer: string; // This is the correct answer string
+  answer: string; 
 }
 
 export interface GeneratedQuiz {
   quiz: QuizQuestion[];
-  flashInformation?: string; 
+  flashFacts?: string[]; 
 }
 
 export interface QuizAttempt {
   quizDefinition: GeneratedQuiz;
-  userAnswers: Record<number, string>; // questionIndex: selectedOptionString
+  userAnswers: Record<number, string>; 
   score: number;
   totalQuestions: number;
 }

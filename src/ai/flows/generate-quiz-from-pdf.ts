@@ -1,11 +1,11 @@
 
 'use server';
 /**
- * @fileOverview Generates a multiple-choice quiz and flash information from one or more PDF documents.
+ * @fileOverview Génère un quiz à choix multiples et des informations flash en français à partir d'un ou plusieurs documents PDF.
  *
- * - generateQuizFromPdf - A function that handles the quiz and flash info generation process.
- * - GenerateQuizFromPdfInput - The input type for the generateQuizFromPdf function.
- * - GenerateQuizFromPdfOutput - The return type for the generateQuizFromPdf function.
+ * - generateQuizFromPdf - Une fonction qui gère le processus de génération de quiz et d'informations flash.
+ * - GenerateQuizFromPdfInput - Le type d'entrée pour la fonction generateQuizFromPdf.
+ * - GenerateQuizFromPdfOutput - Le type de retour pour la fonction generateQuizFromPdf.
  */
 
 import {ai} from '@/ai/genkit';
@@ -15,30 +15,30 @@ const GenerateQuizFromPdfInputSchema = z.object({
   pdfDataUris: z.array(z
     .string()
     .describe(
-      "A PDF document, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-    )).describe('An array of PDF documents as data URIs.'),
-  numQuestions: z.number().int().min(5).max(1000).describe("The desired number of questions to generate, between 5 and 1000."),
+      "Un document PDF, sous forme d'URI de données qui doit inclure un type MIME et utiliser l'encodage Base64. Format attendu : 'data:<mimetype>;base64,<encoded_data>'."
+    )).describe('Un tableau de documents PDF sous forme d\'URI de données.'),
+  numQuestions: z.number().int().min(5).max(1000).describe("Le nombre de questions souhaité à générer, entre 5 et 1000."),
 });
 export type GenerateQuizFromPdfInput = z.infer<typeof GenerateQuizFromPdfInputSchema>;
 
 const GenerateQuizFromPdfOutputSchema = z.object({
   quiz: z.array(
     z.object({
-      question: z.string().describe('The quiz question.'),
-      options: z.array(z.string()).describe('The multiple-choice options for the question.'),
-      answer: z.string().describe('The correct answer to the question.'),
+      question: z.string().describe('La question du quiz, en français.'),
+      options: z.array(z.string()).describe('Les options à choix multiples pour la question, en français.'),
+      answer: z.string().describe('La réponse correcte à la question, en français.'),
     })
-  ).describe('The generated quiz questions and answers.'),
-  flashInformation: z.string().optional().describe('A concise summary or interesting facts extracted from the PDF documents, suitable for quick learning.'),
+  ).describe('Les questions et réponses du quiz générées, en français.'),
+  flashFacts: z.array(z.string()).optional().describe('Une liste de phrases concises ou de faits intéressants extraits des documents PDF, en français, adaptés à un apprentissage rapide. Chaque élément du tableau doit être une phrase distincte.'),
 });
 export type GenerateQuizFromPdfOutput = z.infer<typeof GenerateQuizFromPdfOutputSchema>;
 
 export async function generateQuizFromPdf(input: GenerateQuizFromPdfInput): Promise<GenerateQuizFromPdfOutput> {
   if (!input.pdfDataUris || input.pdfDataUris.length === 0) {
-    throw new Error('No PDF documents provided.');
+    throw new Error('Aucun document PDF fourni.');
   }
   if (input.numQuestions < 5 || input.numQuestions > 1000) {
-    throw new Error('Number of questions must be between 5 and 1000.');
+    throw new Error('Le nombre de questions doit être compris entre 5 et 1000.');
   }
   return generateQuizFromPdfFlow(input);
 }
@@ -47,35 +47,35 @@ const prompt = ai.definePrompt({
   name: 'generateQuizFromPdfPrompt',
   input: {schema: GenerateQuizFromPdfInputSchema},
   output: {schema: GenerateQuizFromPdfOutputSchema},
-  prompt: `You are an expert content generator. Your task is to meticulously analyze the content from ALL the provided PDF documents.
-Based on this analysis, you will produce JSON output with two main fields: 'quiz' and 'flashInformation'.
+  prompt: `Vous êtes un expert en génération de contenu éducatif en français. Votre tâche est d'analyser méticuleusement le contenu de TOUS les documents PDF fournis.
+En fonction de cette analyse, vous produirez une sortie JSON avec deux champs principaux : 'quiz' et 'flashFacts'. Tout le contenu textuel généré DOIT être en FRANÇAIS.
 
-1.  **Quiz Generation ('quiz' field):**
-    *   Generate exactly {{{numQuestions}}} multiple-choice quiz questions.
-    *   It is crucial that each quiz you generate is significantly different from any previous one, even if based on the same documents. Strive for originality in question formulation, topic selection, and the construction of distractors. Make sure the questions are not too similar to each other within the same quiz.
-    *   Each question must have 4 distinct answer options.
-    *   Only one option can be the correct answer.
-    *   Ensure questions cover a wide and diverse range of topics from the documents. Avoid concentrating on a single section or repeating concepts excessively.
-    *   The questions themselves should be distinct from one another within the same quiz.
-    *   Phrase questions clearly and unambiguously.
-    *   The correct answer must be directly and clearly verifiable from the provided document content.
+1.  **Génération de Quiz (champ 'quiz') :**
+    *   Générez exactement {{{numQuestions}}} questions de quiz à choix multiples, EN FRANÇAIS.
+    *   Il est crucial que chaque quiz que vous générez soit significativement différent de tout quiz précédent, même s'il est basé sur les mêmes documents. Visez l'originalité dans la formulation des questions, la sélection des sujets et la construction des distracteurs (options incorrectes). Assurez-vous que les questions ne sont pas trop similaires entre elles au sein d'un même quiz.
+    *   Chaque question doit avoir 4 options de réponse distinctes, EN FRANÇAIS.
+    *   Une seule option peut être la bonne réponse.
+    *   Assurez-vous que les questions couvrent un éventail large et diversifié de sujets issus des documents. Évitez de vous concentrer sur une seule section ou de répéter excessivement des concepts.
+    *   Les questions elles-mêmes doivent être distinctes les unes des autres au sein du même quiz.
+    *   Formulez les questions clairement et sans ambiguïté, EN FRANÇAIS.
+    *   La réponse correcte doit être directement et clairement vérifiable à partir du contenu du document fourni.
 
-2.  **Flash Information Generation ('flashInformation' field):**
-    *   Provide a concise summary (e.g., 2-4 paragraphs, or a few bullet points) of the most important facts, key takeaways, or interesting snippets from ALL provided documents.
-    *   This information is for quick learning.
-    *   This flash information MUST be a string in the 'flashInformation' field of the JSON output. STRIVE TO EXTRACT USEFUL INFORMATION. If, after thorough analysis, no suitable summary or key facts can be extracted, you may return a very brief message like "No specific flash information could be extracted from the provided document(s)." but this should be a last resort.
+2.  **Génération d'Informations Flash (champ 'flashFacts') :**
+    *   Produisez une LISTE (un tableau JavaScript) de faits saillants, de points clés ou d'extraits intéressants et CONCIS issus de TOUS les documents fournis. Ces informations sont destinées à un apprentissage rapide ("flash").
+    *   Chaque élément de la liste doit être une phrase courte et percutante, EN FRANÇAIS.
+    *   Le champ 'flashFacts' dans la sortie JSON doit être un tableau de chaînes de caractères. VISEZ À EXTRAIRE DES INFORMATIONS UTILES ET PERTINENTES. Si, après une analyse approfondie, aucun fait flash adapté ne peut être extrait, vous pouvez retourner un tableau vide pour 'flashFacts', mais cela devrait être un dernier recours. Évitez les phrases génériques comme "Aucune information spécifique...".
 
-Output format must be JSON.
+Le format de sortie doit être JSON. L'intégralité du contenu textuel (questions, options, réponses, flashFacts) doit être EN FRANÇAIS.
 
 {{#if pdfDataUris}}
-Here are the PDF documents:
+Voici les documents PDF :
 {{#each pdfDataUris}}
-Document Content:
+Contenu du Document :
 {{media url=this}}
---- End of Document Content ---
+--- Fin du Contenu du Document ---
 {{/each}}
 {{else}}
-Error: No PDF documents were provided in the input. Cannot generate content.
+Erreur : Aucun document PDF n'a été fourni en entrée. Impossible de générer du contenu.
 {{/if}}
   `,
 });
@@ -89,18 +89,15 @@ const generateQuizFromPdfFlow = ai.defineFlow(
   async input => {
     const {output} = await prompt(input);
     if (!output || !output.quiz || output.quiz.length === 0) {
-      throw new Error('AI failed to generate quiz questions or returned an empty quiz.');
+      throw new Error('L\'IA n\'a pas réussi à générer des questions de quiz ou a retourné un quiz vide.');
     }
-    // Ensure the number of questions is close to requested, models might not be exact
-    // but this provides a basic check.
     if (output.quiz.length < Math.max(1, input.numQuestions / 2)) {
-        console.warn(`AI generated only ${output.quiz.length} questions, less than half of the requested ${input.numQuestions}.`);
+        console.warn(`L'IA n'a généré que ${output.quiz.length} questions, soit moins de la moitié des ${input.numQuestions} demandées.`);
     }
-    if (!output.flashInformation || output.flashInformation.trim() === "" || output.flashInformation.toLowerCase().includes("no specific flash information could be extracted")) {
-        console.warn('AI did not generate meaningful flash information.');
-        // Ensure flashInformation is set to undefined if it's not useful, so downstream logic handles it as "not available"
-        if (output.flashInformation && (output.flashInformation.trim() === "" || output.flashInformation.toLowerCase().includes("no specific flash information could be extracted"))) {
-          output.flashInformation = undefined;
+    if (!output.flashFacts || output.flashFacts.length === 0 || output.flashFacts.every(fact => fact.trim() === "" || fact.toLowerCase().includes("aucune information flash spécifique"))) {
+        console.warn('L\'IA n\'a pas généré d\'informations flash significatives.');
+        if (output.flashFacts && (output.flashFacts.length === 0 || output.flashFacts.every(fact => fact.trim() === "" || fact.toLowerCase().includes("aucune information flash spécifique")))) {
+          output.flashFacts = undefined; 
         }
     }
     return output!;

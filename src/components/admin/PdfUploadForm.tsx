@@ -16,7 +16,7 @@ export function PdfUploadForm() {
   const [files, setFiles] = useState<File[] | null>(null);
   const [numQuestions, setNumQuestions] = useState<string>("20");
   const [isLoading, setIsLoading] = useState(false);
-  const [generatedContentInfo, setGeneratedContentInfo] = useState<{ title: string; questions: number; hasFlashInfo: boolean } | null>(null);
+  const [generatedContentInfo, setGeneratedContentInfo] = useState<{ title: string; questions: number; hasFlashFacts: boolean } | null>(null);
   const { toast } = useToast();
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -26,8 +26,8 @@ export function PdfUploadForm() {
       
       if (!allPdfs) {
         toast({
-          title: 'Invalid File Type',
-          description: 'Please select only PDF files.',
+          title: 'Type de Fichier Invalide',
+          description: 'Veuillez sélectionner uniquement des fichiers PDF.',
           variant: 'destructive',
         });
         setFiles(null);
@@ -49,8 +49,8 @@ export function PdfUploadForm() {
     event.preventDefault();
     if (!files || files.length === 0) {
       toast({
-        title: 'No Files Selected',
-        description: 'Please select one or more PDF files to upload.',
+        title: 'Aucun Fichier Sélectionné',
+        description: 'Veuillez sélectionner un ou plusieurs fichiers PDF à télécharger.',
         variant: 'destructive',
       });
       return;
@@ -59,8 +59,8 @@ export function PdfUploadForm() {
     const parsedNumQuestions = parseInt(numQuestions, 10);
     if (isNaN(parsedNumQuestions) || parsedNumQuestions < 5 || parsedNumQuestions > 1000) {
       toast({
-        title: 'Invalid Number of Questions',
-        description: 'Please enter a number between 5 and 1000.',
+        title: 'Nombre de Questions Invalide',
+        description: 'Veuillez entrer un nombre entre 5 et 1000.',
         variant: 'destructive',
       });
       return;
@@ -88,27 +88,27 @@ export function PdfUploadForm() {
           localStorage.setItem(QUIZ_DATA_STORAGE_KEY, JSON.stringify(contentOutput)); 
           
           const fileNames = files.map(f => f.name).join(', ');
-          const hasMeaningfulFlashInfo = !!contentOutput.flashInformation && contentOutput.flashInformation.trim().length > 0 && !contentOutput.flashInformation.toLowerCase().includes("no specific flash information could be extracted");
+          const hasMeaningfulFlashFacts = !!contentOutput.flashFacts && contentOutput.flashFacts.length > 0 && contentOutput.flashFacts.some(fact => fact.trim() !== "" && !fact.toLowerCase().includes("aucune information flash spécifique"));
           
           setGeneratedContentInfo({ 
             title: fileNames, 
             questions: contentOutput.quiz.length,
-            hasFlashInfo: hasMeaningfulFlashInfo
+            hasFlashFacts: hasMeaningfulFlashFacts
           });
 
           toast({
-            title: 'Content Generated Successfully!',
-            description: `${contentOutput.quiz.length} questions generated. ${hasMeaningfulFlashInfo ? 'Flash information also generated.' : 'Flash information was not generated for these document(s).'} From ${files.length} document(s).`,
+            title: 'Contenu Généré avec Succès !',
+            description: `${contentOutput.quiz.length} questions générées. ${hasMeaningfulFlashFacts ? 'Informations flash également générées.' : 'Aucune information flash pertinente n\'a été générée pour ce(s) document(s).'} À partir de ${files.length} document(s).`,
           });
 
         } else {
-          throw new Error('AI failed to generate quiz questions or returned an empty quiz.');
+          throw new Error('L\'IA n\'a pas réussi à générer des questions de quiz ou a retourné un quiz vide.');
         }
       } catch (aiError) {
-        console.error('AI processing error:', aiError);
+        console.error('Erreur de traitement IA:', aiError);
         toast({
-          title: 'Error Generating Content',
-          description: (aiError instanceof Error ? aiError.message : String(aiError)) || 'The AI failed to process the PDF(s). Please try other document(s) or check the console.',
+          title: 'Erreur lors de la Génération du Contenu',
+          description: (aiError instanceof Error ? aiError.message : String(aiError)) || 'L\'IA n\'a pas pu traiter le(s) PDF. Veuillez essayer d\'autres documents ou vérifier la console.',
           variant: 'destructive',
         });
         localStorage.removeItem(QUIZ_DATA_STORAGE_KEY);
@@ -116,10 +116,10 @@ export function PdfUploadForm() {
         setIsLoading(false);
       }
     } catch (e) {
-      console.error('File reading or form submission error:', e);
+      console.error('Erreur de lecture de fichier ou de soumission de formulaire:', e);
       toast({
-        title: 'Upload Failed',
-        description: (e instanceof Error ? e.message : String(e)) || 'An unexpected error occurred while reading files.',
+        title: 'Échec du Téléchargement',
+        description: (e instanceof Error ? e.message : String(e)) || 'Une erreur inattendue s\'est produite lors de la lecture des fichiers.',
         variant: 'destructive',
       });
       setIsLoading(false);
@@ -129,7 +129,7 @@ export function PdfUploadForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
-        <Label htmlFor="pdf-upload" className="text-base">Upload PDF Document(s)</Label>
+        <Label htmlFor="pdf-upload" className="text-base">Télécharger Document(s) PDF</Label>
         <Input
           id="pdf-upload"
           type="file"
@@ -141,12 +141,12 @@ export function PdfUploadForm() {
           disabled={isLoading}
         />
         <p id="file-upload-help" className="text-sm text-muted-foreground">
-          Select one or more PDF files to generate a quiz and flash information.
+          Sélectionnez un ou plusieurs fichiers PDF pour générer un quiz et des informations flash.
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="num-questions" className="text-base">Number of Questions</Label>
+        <Label htmlFor="num-questions" className="text-base">Nombre de Questions</Label>
         <Input
           id="num-questions"
           type="number"
@@ -160,7 +160,7 @@ export function PdfUploadForm() {
           disabled={isLoading}
         />
         <p id="num-questions-help" className="text-sm text-muted-foreground">
-          Enter the desired number of questions (5-1000).
+          Entrez le nombre de questions souhaité (5-1000).
         </p>
       </div>
 
@@ -168,24 +168,24 @@ export function PdfUploadForm() {
         <Card className="border-dashed border-primary bg-primary/5">
           <CardContent className="p-4 text-center">
             {files.length === 1 ? <FileText className="mx-auto h-10 w-10 text-primary mb-2" /> : <FileArchive className="mx-auto h-10 w-10 text-primary mb-2" />}
-            <p className="text-sm font-medium text-primary">Selected file(s): {files.map(f => f.name).join(', ')}</p>
-            <p className="text-xs text-muted-foreground">Total size: {(files.reduce((acc, f) => acc + f.size, 0) / 1024).toFixed(2)} KB</p>
+            <p className="text-sm font-medium text-primary">Fichier(s) sélectionné(s) : {files.map(f => f.name).join(', ')}</p>
+            <p className="text-xs text-muted-foreground">Taille totale : {(files.reduce((acc, f) => acc + f.size, 0) / 1024).toFixed(2)} KB</p>
           </CardContent>
         </Card>
       )}
       
       {generatedContentInfo && (
-         <Card className={generatedContentInfo.hasFlashInfo ? "bg-green-50 border-green-500" : "bg-orange-50 border-orange-500"}>
+         <Card className={generatedContentInfo.hasFlashFacts ? "bg-green-50 border-green-500" : "bg-orange-50 border-orange-500"}>
           <CardContent className="p-4 text-center space-y-1">
             <div className="flex justify-center items-center gap-2">
-                <ListPlus className={`h-8 w-8 ${generatedContentInfo.hasFlashInfo ? 'text-green-700' : 'text-orange-700'}`} />
-                {generatedContentInfo.hasFlashInfo && <Info className="h-8 w-8 text-green-700" />}
-                {!generatedContentInfo.hasFlashInfo && <AlertCircle className="h-8 w-8 text-orange-700" />}
+                <ListPlus className={`h-8 w-8 ${generatedContentInfo.hasFlashFacts ? 'text-green-700' : 'text-orange-700'}`} />
+                {generatedContentInfo.hasFlashFacts && <Info className="h-8 w-8 text-green-700" />}
+                {!generatedContentInfo.hasFlashFacts && <AlertCircle className="h-8 w-8 text-orange-700" />}
             </div>
-            <p className={`text-sm font-medium ${generatedContentInfo.hasFlashInfo ? 'text-green-700' : 'text-orange-700'}`}>Content generated from: {generatedContentInfo.title.length > 50 ? `${generatedContentInfo.title.substring(0,50)}...` : generatedContentInfo.title}</p>
-            <p className={`text-xs ${generatedContentInfo.hasFlashInfo ? 'text-green-600' : 'text-orange-600'}`}>{generatedContentInfo.questions} questions created.</p>
-            {generatedContentInfo.hasFlashInfo && <p className="text-xs text-green-600">Flash information also generated.</p>}
-            {!generatedContentInfo.hasFlashInfo && <p className="text-xs text-orange-600">Flash information was not generated for these document(s).</p>}
+            <p className={`text-sm font-medium ${generatedContentInfo.hasFlashFacts ? 'text-green-700' : 'text-orange-700'}`}>Contenu généré à partir de : {generatedContentInfo.title.length > 50 ? `${generatedContentInfo.title.substring(0,50)}...` : generatedContentInfo.title}</p>
+            <p className={`text-xs ${generatedContentInfo.hasFlashFacts ? 'text-green-600' : 'text-orange-600'}`}>{generatedContentInfo.questions} questions créées.</p>
+            {generatedContentInfo.hasFlashFacts && <p className="text-xs text-green-600">Informations flash également générées.</p>}
+            {!generatedContentInfo.hasFlashFacts && <p className="text-xs text-orange-600">Aucune information flash pertinente n'a été générée pour ce(s) document(s).</p>}
           </CardContent>
         </Card>
       )}
@@ -196,16 +196,16 @@ export function PdfUploadForm() {
         ) : (
           <UploadCloud className="mr-2 h-4 w-4" />
         )}
-        {isLoading ? 'Processing PDF(s)...' : 'Upload and Generate Content'}
+        {isLoading ? 'Traitement du/des PDF...' : 'Télécharger et Générer le Contenu'}
       </Button>
       
       <Card className="mt-4 bg-yellow-50 border-yellow-400 text-yellow-700">
         <CardContent className="p-4 flex items-start space-x-3">
           <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold">Important Note:</p>
+            <p className="text-sm font-semibold">Note Importante :</p>
             <p className="text-xs">
-              Content generation may take a few moments, especially for a large number of questions. Ensure PDF content is clear for best results. Flash information generation depends on the document content and AI interpretation.
+              La génération de contenu peut prendre quelques instants, surtout pour un grand nombre de questions. Assurez-vous que le contenu du PDF est clair pour de meilleurs résultats. La génération d'informations flash dépend du contenu du document et de l'interprétation de l'IA.
             </p>
           </div>
         </CardContent>

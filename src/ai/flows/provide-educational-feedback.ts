@@ -1,27 +1,28 @@
+
 'use server';
 
 /**
- * @fileOverview Generates educational feedback for incorrect quiz answers.
+ * @fileOverview Génère un feedback éducatif en français pour les réponses incorrectes aux quiz.
  *
- * - provideEducationalFeedback - A function that provides feedback for incorrect quiz answers.
- * - ProvideEducationalFeedbackInput - The input type for the provideEducationalFeedback function.
- * - ProvideEducationalFeedbackOutput - The return type for the provideEducationalFeedback function.
+ * - provideEducationalFeedback - Une fonction qui fournit un feedback pour les réponses incorrectes aux quiz.
+ * - ProvideEducationalFeedbackInput - Le type d'entrée pour la fonction provideEducationalFeedback.
+ * - ProvideEducationalFeedbackOutput - Le type de retour pour la fonction provideEducationalFeedback.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const ProvideEducationalFeedbackInputSchema = z.object({
-  question: z.string().describe('The quiz question.'),
-  userAnswer: z.string().describe('The user\'s answer to the question.'),
-  correctAnswer: z.string().describe('The correct answer to the question.'),
-  context: z.string().describe('Relevant context from the source document to help explain the answer.'),
+  question: z.string().describe('La question du quiz (en français).'),
+  userAnswer: z.string().describe('La réponse de l\'utilisateur à la question (en français).'),
+  correctAnswer: z.string().describe('La réponse correcte à la question (en français).'),
+  context: z.string().describe('Contexte pertinent du document source pour aider à expliquer la réponse. Peut être en anglais ou en français.'),
 });
 
 export type ProvideEducationalFeedbackInput = z.infer<typeof ProvideEducationalFeedbackInputSchema>;
 
 const ProvideEducationalFeedbackOutputSchema = z.object({
-  explanation: z.string().describe('A clear and educational explanation of why the user\'s answer was incorrect and why the correct answer is correct.'),
+  explanation: z.string().describe('Une explication claire et éducative, EN FRANÇAIS, indiquant pourquoi la réponse de l\'utilisateur était incorrecte et pourquoi la bonne réponse est correcte.'),
 });
 
 export type ProvideEducationalFeedbackOutput = z.infer<typeof ProvideEducationalFeedbackOutputSchema>;
@@ -34,14 +35,15 @@ const prompt = ai.definePrompt({
   name: 'provideEducationalFeedbackPrompt',
   input: {schema: ProvideEducationalFeedbackInputSchema},
   output: {schema: ProvideEducationalFeedbackOutputSchema},
-  prompt: `You are an expert educator providing feedback on quiz questions.
+  prompt: `Vous êtes un expert pédagogue fournissant des retours sur les questions d'un quiz.
+La langue de l'interaction (question, réponses) est le FRANÇAIS. Votre explication doit impérativement être EN FRANÇAIS.
 
-  A user answered the following question incorrectly. Provide a clear and educational explanation of why the user's answer was incorrect and why the correct answer is correct. Use the context provided to give a complete answer.
+Un utilisateur a répondu incorrectement à la question suivante. Fournissez une explication claire et pédagogique EN FRANÇAIS expliquant pourquoi la réponse de l'utilisateur était incorrecte et pourquoi la bonne réponse est correcte. Utilisez le contexte fourni pour donner une réponse complète. Assurez-vous que votre explication soit entièrement EN FRANÇAIS.
 
-  Question: {{{question}}}
-  User's Answer: {{{userAnswer}}}
-  Correct Answer: {{{correctAnswer}}}
-  Context: {{{context}}}`,
+Question (en français) : {{{question}}}
+Réponse de l'utilisateur (en français) : {{{userAnswer}}}
+Réponse Correcte (en français) : {{{correctAnswer}}}
+Contexte (peut être en anglais ou en français, utilisez-le pour informer votre réponse en français) : {{{context}}}`,
 });
 
 const provideEducationalFeedbackFlow = ai.defineFlow(
