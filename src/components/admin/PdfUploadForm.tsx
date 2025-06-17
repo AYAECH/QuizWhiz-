@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { generateQuizFromPdf, type GenerateQuizFromPdfOutput } from '@/ai/flows/generate-quiz-from-pdf';
-import { Loader2, UploadCloud, FileText, AlertTriangle, ListPlus, FileArchive, Info } from 'lucide-react';
+import { Loader2, UploadCloud, FileText, AlertTriangle, ListPlus, FileArchive, Info, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const QUIZ_DATA_STORAGE_KEY = 'quizwhiz_active_quiz_data';
@@ -85,19 +85,22 @@ export function PdfUploadForm() {
         const contentOutput: GenerateQuizFromPdfOutput = await generateQuizFromPdf({ pdfDataUris, numQuestions: parsedNumQuestions });
 
         if (contentOutput && contentOutput.quiz && contentOutput.quiz.length > 0) {
-          // contentOutput now includes quiz and potentially flashInformation
           localStorage.setItem(QUIZ_DATA_STORAGE_KEY, JSON.stringify(contentOutput)); 
           
           const fileNames = files.map(f => f.name).join(', ');
+          const hasMeaningfulFlashInfo = !!contentOutput.flashInformation && contentOutput.flashInformation.trim().length > 0 && !contentOutput.flashInformation.toLowerCase().includes("no specific flash information could be extracted");
+          
           setGeneratedContentInfo({ 
             title: fileNames, 
             questions: contentOutput.quiz.length,
-            hasFlashInfo: !!contentOutput.flashInformation && contentOutput.flashInformation.length > 0
+            hasFlashInfo: hasMeaningfulFlashInfo
           });
+
           toast({
             title: 'Content Generated Successfully!',
-            description: `${contentOutput.quiz.length} questions ${contentOutput.flashInformation ? 'and flash information ' : ''}were generated from ${files.length} document(s).`,
+            description: `${contentOutput.quiz.length} questions generated. ${hasMeaningfulFlashInfo ? 'Flash information also generated.' : 'Flash information was not generated for these document(s).'} From ${files.length} document(s).`,
           });
+
         } else {
           throw new Error('AI failed to generate quiz questions or returned an empty quiz.');
         }
@@ -172,15 +175,17 @@ export function PdfUploadForm() {
       )}
       
       {generatedContentInfo && (
-         <Card className="bg-green-50 border-green-500">
+         <Card className={generatedContentInfo.hasFlashInfo ? "bg-green-50 border-green-500" : "bg-orange-50 border-orange-500"}>
           <CardContent className="p-4 text-center space-y-1">
             <div className="flex justify-center items-center gap-2">
-                <ListPlus className="h-8 w-8 text-green-700" />
+                <ListPlus className={`h-8 w-8 ${generatedContentInfo.hasFlashInfo ? 'text-green-700' : 'text-orange-700'}`} />
                 {generatedContentInfo.hasFlashInfo && <Info className="h-8 w-8 text-green-700" />}
+                {!generatedContentInfo.hasFlashInfo && <AlertCircle className="h-8 w-8 text-orange-700" />}
             </div>
-            <p className="text-sm font-medium text-green-700">Content generated from: {generatedContentInfo.title.length > 50 ? `${generatedContentInfo.title.substring(0,50)}...` : generatedContentInfo.title}</p>
-            <p className="text-xs text-green-600">{generatedContentInfo.questions} questions created.</p>
+            <p className={`text-sm font-medium ${generatedContentInfo.hasFlashInfo ? 'text-green-700' : 'text-orange-700'}`}>Content generated from: {generatedContentInfo.title.length > 50 ? `${generatedContentInfo.title.substring(0,50)}...` : generatedContentInfo.title}</p>
+            <p className={`text-xs ${generatedContentInfo.hasFlashInfo ? 'text-green-600' : 'text-orange-600'}`}>{generatedContentInfo.questions} questions created.</p>
             {generatedContentInfo.hasFlashInfo && <p className="text-xs text-green-600">Flash information also generated.</p>}
+            {!generatedContentInfo.hasFlashInfo && <p className="text-xs text-orange-600">Flash information was not generated for these document(s).</p>}
           </CardContent>
         </Card>
       )}
@@ -200,7 +205,7 @@ export function PdfUploadForm() {
           <div>
             <p className="text-sm font-semibold">Important Note:</p>
             <p className="text-xs">
-              Content generation may take a few moments, especially for a large number of questions. Ensure PDF content is clear for best results.
+              Content generation may take a few moments, especially for a large number of questions. Ensure PDF content is clear for best results. Flash information generation depends on the document content and AI interpretation.
             </p>
           </div>
         </CardContent>

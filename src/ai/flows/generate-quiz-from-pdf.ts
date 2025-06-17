@@ -48,19 +48,22 @@ const prompt = ai.definePrompt({
   input: {schema: GenerateQuizFromPdfInputSchema},
   output: {schema: GenerateQuizFromPdfOutputSchema},
   prompt: `You are an expert content generator. Your task is to meticulously analyze the content from ALL the provided PDF documents.
-Based on this analysis, you will:
-1.  Generate exactly {{{numQuestions}}} multiple-choice quiz questions.
-2.  Additionally, provide a "Flash Information" section. This should be a concise summary (e.g., 2-4 paragraphs, or a few bullet points) of the most important facts, key takeaways, or interesting snippets from the document(s), suitable for quick learning. This flash information should be returned in the 'flashInformation' field of the JSON output.
+Based on this analysis, you will produce JSON output with two main fields: 'quiz' and 'flashInformation'.
 
-For the quiz:
--   It is crucial that each quiz you generate is significantly different from any previous one, even if based on the same documents. Strive for originality in question formulation, topic selection, and the construction of distractors. Make sure the questions are not too similar to each other within the same quiz.
--   Generate exactly {{{numQuestions}}} questions.
--   Each question must have 4 distinct answer options.
--   Only one option can be the correct answer.
--   Ensure questions cover a wide and diverse range of topics from the documents. Avoid concentrating on a single section or repeating concepts excessively.
--   The questions themselves should be distinct from one another within the same quiz.
--   Phrase questions clearly and unambiguously.
--   The correct answer must be directly and clearly verifiable from the provided document content.
+1.  **Quiz Generation ('quiz' field):**
+    *   Generate exactly {{{numQuestions}}} multiple-choice quiz questions.
+    *   It is crucial that each quiz you generate is significantly different from any previous one, even if based on the same documents. Strive for originality in question formulation, topic selection, and the construction of distractors. Make sure the questions are not too similar to each other within the same quiz.
+    *   Each question must have 4 distinct answer options.
+    *   Only one option can be the correct answer.
+    *   Ensure questions cover a wide and diverse range of topics from the documents. Avoid concentrating on a single section or repeating concepts excessively.
+    *   The questions themselves should be distinct from one another within the same quiz.
+    *   Phrase questions clearly and unambiguously.
+    *   The correct answer must be directly and clearly verifiable from the provided document content.
+
+2.  **Flash Information Generation ('flashInformation' field):**
+    *   Provide a concise summary (e.g., 2-4 paragraphs, or a few bullet points) of the most important facts, key takeaways, or interesting snippets from ALL provided documents.
+    *   This information is for quick learning.
+    *   This flash information MUST be a string in the 'flashInformation' field of the JSON output. STRIVE TO EXTRACT USEFUL INFORMATION. If, after thorough analysis, no suitable summary or key facts can be extracted, you may return a very brief message like "No specific flash information could be extracted from the provided document(s)." but this should be a last resort.
 
 Output format must be JSON.
 
@@ -93,10 +96,12 @@ const generateQuizFromPdfFlow = ai.defineFlow(
     if (output.quiz.length < Math.max(1, input.numQuestions / 2)) {
         console.warn(`AI generated only ${output.quiz.length} questions, less than half of the requested ${input.numQuestions}.`);
     }
-    if (!output.flashInformation) {
-        console.warn('AI did not generate flash information.');
-        // You could add a default or empty string here if preferred,
-        // output.flashInformation = "";
+    if (!output.flashInformation || output.flashInformation.trim() === "" || output.flashInformation.toLowerCase().includes("no specific flash information could be extracted")) {
+        console.warn('AI did not generate meaningful flash information.');
+        // Ensure flashInformation is set to undefined if it's not useful, so downstream logic handles it as "not available"
+        if (output.flashInformation && (output.flashInformation.trim() === "" || output.flashInformation.toLowerCase().includes("no specific flash information could be extracted"))) {
+          output.flashInformation = undefined;
+        }
     }
     return output!;
   }
